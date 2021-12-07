@@ -5,10 +5,10 @@
 //  Created by Wiktor Wójcik on 24/11/2021.
 //
 
-import Cocoa
 #if canImport(Cocoa)
 import Cocoa
 #endif
+import Foundation
 
 enum Option {
 	case DebugMode

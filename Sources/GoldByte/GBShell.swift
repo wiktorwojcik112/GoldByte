@@ -6,7 +6,9 @@
 //
 
 import Foundation
+#if canImport(AppKit)
 import AppKit
+#endif
 
 class GBShell {
 	typealias GBMacroAction = GBStorage.GBMacroAction

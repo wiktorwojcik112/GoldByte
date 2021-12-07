@@ -6,7 +6,9 @@
 //
 
 import Foundation
+#if canImport(AppKit)
 import AppKit
+#endif
 
 protocol GBConsole {
 	func text(_ string: String)
