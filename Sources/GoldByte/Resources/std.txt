@@ -1,0 +1,16 @@
+FN random(min:NUMBER,max:NUMBER):NUMBER
+	VAR NUMBER __temporary__ 0
+	RAND $__temporary__ min max
+	RETURN __temporary__
+/FN
+
+FN concat(left:STRING,right:STRING):STRING
+	RETURN "%(left) %(right)"
+/FN
+
+FN input(text:STRING):STRING
+	VAR STRING __temporary__ ""
+	PRINT text
+	INPUT STRING $__temporary__ true
+	RETURN __temporary__
+/FN
