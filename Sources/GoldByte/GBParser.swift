@@ -613,7 +613,7 @@ class GBParser {
 }
 
 extension String {
-	func solveInterpolation(withStorage storage: GBStorage) -> String {
+	func prepare(withStorage storage: GBStorage) -> String {
 		var elements = self.components(separatedBy: " ")
 		
 		elements = elements.map { element -> String in

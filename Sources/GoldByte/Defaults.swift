@@ -311,8 +311,6 @@ class DefaultConsole: GBConsole {
 	func input() -> String {
 		readLine()!
 	}
-	
-	
 }
 
 class DefaultErrorHandler: GBErrorHandler {

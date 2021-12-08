@@ -30,6 +30,7 @@ class GBShell {
 		core.addMacros(getMacros(withStorage: core.storage))
 		core.storage["PATH"] = .init(value: "/Users", type: .url, scope: .global)
 		core.configuration.flags = []
+		core.configuration.console = ShellConsole()
 	}
 	
 	func start() {
@@ -276,4 +277,18 @@ func print(_ text: String, withWidth width: Int) {
 	}
 	
 	print(indentation + text, terminator: "")
+}
+
+class ShellConsole: GBConsole {
+	func warning(_ string: String) {
+		text("[WARNING] \(string)")
+	}
+	
+	func text(_ string: String) {
+		print(string)
+	}
+	
+	func input() -> String {
+		readLine()!
+	}
 }
