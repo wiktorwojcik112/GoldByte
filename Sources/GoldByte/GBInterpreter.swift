@@ -174,7 +174,7 @@ class GBInterpreter {
 										return (nil, nil, .init(type: .interpreting, description: "Expected \"\(type!.rawValue)\", got \"string\"", line: lineNumber, word: tokenNumber))
 									}
 									
-									task = .variable_assignment(value.solveInterpolation(withStorage: storage), type)
+									task = .variable_assignment(value.prepare(withStorage: storage), type)
 								}
 							} else if case .equation(let equation) = token {
 								if case .variable_assignment(let _, let type) = task {
@@ -263,7 +263,7 @@ class GBInterpreter {
 									return (nil, nil, .init(type: .interpreting, description: "Return type of function (\(returnType?.rawValue ?? "VOID")) and returned value (STRING) don't match.", line: lineNumber, word: tokenNumber))
 								}
 								
-								task = .return_value(.string(value.replacingOccurrences(of: "\"", with: "").solveInterpolation(withStorage: storage)))
+								task = .return_value(.string(value.replacingOccurrences(of: "\"", with: "").prepare(withStorage: storage)))
 							} else if case .url(let url) = token {
 								if returnType?.rawValue != GBStorage.ValueType.url.rawValue {
 									return (nil, nil, .init(type: .interpreting, description: "Return type of function (\(returnType?.rawValue ?? "VOID")) and returned value (URL) don't match.", line: lineNumber, word: tokenNumber))
@@ -320,7 +320,7 @@ class GBInterpreter {
 						}
 					} else if case .macro_execution(let _) = task {
 						if case .string(let value) = token {
-							arguments.append(.string(value.replacingOccurrences(of: "\"", with: "").solveInterpolation(withStorage: storage)))
+							arguments.append(.string(value.replacingOccurrences(of: "\"", with: "").prepare(withStorage: storage)))
 						} else if case .type(let type) = token {
 							arguments.append(.string(type.rawValue))
 						} else if case .url(let url) = token {
