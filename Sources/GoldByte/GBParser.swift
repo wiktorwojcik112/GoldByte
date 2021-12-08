@@ -26,27 +26,25 @@ class GBParser {
 		
 		for word in line {
 			if (word.hasPrefix("\"") && word.hasSuffix("\"")) || (word == "\"\"") {
-				newLine.append(word)
+				newLine.append(word.replacingOccurrences(of: ",", with: "^(564x9)&$"))
 			} else if word == "\"" && !hasStartedString {
 				hasStartedString = true
 			} else if word == "\"" && hasStartedString {
-				newLine.append("\"" + string + "\"")
+				newLine.append("\"" + string.replacingOccurrences(of: ",", with: "^(564x9)&$") + "\"")
 				hasStartedString = false
 			} else if word.hasPrefix("\"") && !hasStartedString {
 				hasStartedString = true
-				
-				//let withoutMark = word.replacingOccurrences(of: "\"", with: "")
 				string.append(word)
 			} else if word.hasSuffix("\"") && hasStartedString {
 				string.append(" " + word)
 				
-				newLine.append("\"" + string + "\"")
+				newLine.append("\"" + string.replacingOccurrences(of: ",", with: "^(564x9)&$") + "\"")
 				
 				hasStartedString = false
 			} else if word.contains("\"") {
 				if hasStartedString {
 					string.append(" " + word)
-					newLine.append(string)
+					newLine.append(string.replacingOccurrences(of: ",", with: "^(564x9)&$"))
 					hasStartedString = false
 				} else {
 					string.append(word)
@@ -614,7 +612,7 @@ class GBParser {
 
 extension String {
 	func prepare(withStorage storage: GBStorage) -> String {
-		var elements = self.components(separatedBy: " ")
+		var elements = self.replacingOccurrences(of: ",", with: "^(564x9)&$").components(separatedBy: " ")
 		
 		elements = elements.map { element -> String in
 			if element.hasPrefix("%(") && element.hasSuffix(")") {

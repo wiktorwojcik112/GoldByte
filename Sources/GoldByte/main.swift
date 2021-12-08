@@ -76,7 +76,7 @@ extension GBCore {
 						
 						let script = script.trimmingCharacters(in: .whitespacesAndNewlines)
 						
-						var arguments = script.solveInterpolation(withStorage: storage).components(separatedBy: " ")
+						var arguments = script.prepare(withStorage: storage).components(separatedBy: " ")
 						
 						process.arguments = arguments
 						
