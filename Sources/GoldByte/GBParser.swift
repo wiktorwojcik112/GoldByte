@@ -26,11 +26,11 @@ class GBParser {
 		
 		for word in line {
 			if (word.hasPrefix("\"") && word.hasSuffix("\"")) || (word == "\"\"") {
-				newLine.append(word.replacingOccurrences(of: ",", with: "^(564x9)&$"))
+				newLine.append(word.replaceKeywordCharactersBetween())
 			} else if word == "\"" && !hasStartedString {
 				hasStartedString = true
 			} else if word == "\"" && hasStartedString {
-				newLine.append("\"" + string.replacingOccurrences(of: ",", with: "^(564x9)&$") + "\"")
+				newLine.append("\"" + string.replaceKeywordCharactersBetween() + "\"")
 				hasStartedString = false
 			} else if word.hasPrefix("\"") && !hasStartedString {
 				hasStartedString = true
@@ -38,22 +38,34 @@ class GBParser {
 			} else if word.hasSuffix("\"") && hasStartedString {
 				string.append(" " + word)
 				
-				newLine.append("\"" + string.replacingOccurrences(of: ",", with: "^(564x9)&$") + "\"")
+				newLine.append("\"" + string.replaceKeywordCharactersBetween() + "\"")
 				
 				hasStartedString = false
 			} else if word.contains("\"") {
 				if hasStartedString {
 					string.append(" " + word)
-					newLine.append(string.replacingOccurrences(of: ",", with: "^(564x9)&$"))
+					newLine.append(string.replaceKeywordCharactersBetween())
 					hasStartedString = false
 				} else {
 					string.append(word)
-					hasStartedString = true
+					
+					let countOfQuationMarks = word.count(of: "\"")
+					
+					if countOfQuationMarks != 0 && countOfQuationMarks % 2 == 0 {
+						newLine.append(string.replaceKeywordCharactersBetween())
+						hasStartedString = false
+					} else {
+						hasStartedString = true
+					}
 				}
 			} else if hasStartedString {
 				string.append(" " + word)
 			} else {
 				newLine.append(word)
+			}
+			
+			if !hasStartedString {
+				string = ""
 			}
 		}
 		
@@ -163,7 +175,7 @@ class GBParser {
 								return (nil, .init(type: .parsing, description: "Header macros must only be used in header (before any other operation).", line: lineNumber, word: wordNumber))
 							}
 						}
-					} else if word[word.range(of: #"[a-zA-Z]+\([a-zA-Z.,:_&\^%$#@!-+ 1-9]*\)"#, options: .regularExpression) ?? word.startIndex..<(word.index(word.startIndex, offsetBy: 1))] == word {
+					} else if word[word.range(of: #"[a-zA-Z]+\([a-zA-Z.,:"_&%$#@!-+ 1-9\^&$+-~`]*\)"#, options: .regularExpression) ?? word.startIndex..<(word.index(word.startIndex, offsetBy: 1))] == word {
 						let name = word.components(separatedBy: "(")[0]
 						
 						let argumentParts = word.components(separatedBy: "(")[1].dropLast().components(separatedBy: ",")
@@ -522,8 +534,8 @@ class GBParser {
 						} else {
 							return (nil, .init(type: .parsing, description: "Invalid token.", line: lineNumber, word: wordNumber))
 						}
-					} else if word.range(of: #"[a-zA-Z]+\([a-zA-Z,0-9\"/: .?!]*\)"#, options: .regularExpression) != nil {
-						if word[word.range(of: #"[a-zA-Z]+\([a-zA-Z,0-9\"/: .?!]*\)"#, options: .regularExpression)!] == word {
+					} else if word.range(of: #"[a-zA-Z]+\([a-zA-Z,0-9\"/: \^&$.?!]*\)"#, options: .regularExpression) != nil {
+						if word[word.range(of: #"[a-zA-Z]+\([a-zA-Z,0-9\"/: \^&$.?!]*\)"#, options: .regularExpression)!] == word {
 							let name = word.components(separatedBy: "(")[0]
 							
 							let argumentParts = word.components(separatedBy: "(")[1].dropLast().components(separatedBy: ",")
@@ -611,8 +623,16 @@ class GBParser {
 }
 
 extension String {
+	func replaceKeywordCharacters() -> String {
+		self.replacingOccurrences(of: ",", with: "^564x8&$").replacingOccurrences(of: ")", with: "^564x8&$").replacingOccurrences(of: "(", with: "^564x7&$")
+	}
+	
+	func replaceKeywordCharactersBetween() -> String {
+		self.replacingOccurrences(of: ",", with: "^564x8&$", between: "\"").replacingOccurrences(of: ")", with: "^564x8&$", between: "\"").replacingOccurrences(of: "(", with: "^564x7&$", between: "\"")
+	}
+	
 	func prepare(withStorage storage: GBStorage) -> String {
-		var elements = self.replacingOccurrences(of: ",", with: "^(564x9)&$").components(separatedBy: " ")
+		var elements = self.replacingOccurrences(of: "^564x7&$", with: "(").replacingOccurrences(of: "^564x8&$", with: ")").replacingOccurrences(of: "^564x9&$", with: ",").components(separatedBy: " ")
 		
 		elements = elements.map { element -> String in
 			if element.hasPrefix("%(") && element.hasSuffix(")") {
@@ -678,6 +698,34 @@ extension String {
 	
 	var isLogicalOperator: Bool {
 		GBLogicalExpression.operators.contains(self)
+	}
+	
+	func replacingOccurrences(of: String, with: String, between: Character) -> String {
+		var isBetween = false
+		var result = ""
+		
+		for character in self {
+			if character == between {
+				isBetween.toggle()
+			} else if isBetween {
+				result.append(String(character) == of ? String(with) : String(character))
+				continue
+			}
+			
+			result.append(String(character))
+		}
+		
+		return result
+	}
+	
+	func count(of searchedCharacter: Character) -> Int {
+		var count = 0
+		
+		for character in self {
+			count += character == searchedCharacter ? 1 : 0
+		}
+		
+		return count
 	}
 	
 	func slice(from: String, to: String) -> String? {

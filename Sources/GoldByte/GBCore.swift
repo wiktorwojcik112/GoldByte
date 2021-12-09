@@ -124,14 +124,14 @@ class GBCore {
 			errorHandler.handle(error)
 			
 			if configuration.flags.contains(.showExitMessage) {
-				console.text("Program exited with exit code: 1\n")
+				print("Program exited with exit code: 1")
 			}
 			
 			return
 		}
 		
 		if configuration.flags.contains(.showExitMessage) {
-			console.text("Program exited with exit code: 0\n")
+			print("Program exited with exit code: 0")
 		}
 	}
 }

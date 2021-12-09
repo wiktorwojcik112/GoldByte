@@ -55,7 +55,7 @@ class GBStorage {
 		let function = functions[functionName]!
 		
 		for (n, argument) in arguments.enumerated() {
-			self[function.definition.arguments[n].name] = .init(value: argument.value, type: argument.type, scope: scope)
+			self[function.definition.arguments[n].name] = .init(value: argument.type == .string ? argument.value.replaceKeywordCharacters() : argument.value, type: argument.type, scope: scope)
 		}
 	}
 	
