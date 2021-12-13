@@ -89,20 +89,16 @@ class GBParser {
 			}
 		}
 		
-		var functionBlock = [[GBToken]]()
-		var codeBlock = [[GBToken]]()
+		
+		var blocks: [GBBlock] = []
+		var codeBlocks = [[[GBToken]]]()
 		
 		var expectsCodeBlock = false
-		var lineNumberInCodeBlock = 0
-		
-		var hasStartedIfConstruction = false
-		var hasStartedFunction = false
 		
 		var isHeader = true
 
 		for (lineNumber, line) in lines.enumerated() {
 			if line.hasPrefix("//") {
-				result.append([.comment])
 				continue
 			}
 			
@@ -124,9 +120,7 @@ class GBParser {
 			
 			var equation = [GBEquationSymbol]()
 			var lastWasNumber = false
-			
-			var lostLines = 0
-			
+
 			let headerMacros = ["USE"]
 			
 			for (wordNumber, word) in words.enumerated() {
@@ -140,28 +134,25 @@ class GBParser {
 					}
 					
 					if word.isPlainText {
-						if word == "JUMP" && core.configuration.flags.contains(.allowMultiline) {
-							currentLine.append(.jump_keyword)
-						} else if word == "RETURN" {
+						if word == "RETURN" && expectsCodeBlock {
 							currentLine.append(.return_keyword)
 						} else if word == "VAR" {
 							currentLine.append(.variable_keyword)
-						} else if word == "IF" && core.configuration.flags.contains(.allowMultiline) {
-							if !hasStartedIfConstruction {
-								currentLine.append(.if_keyword)
-								hasStartedIfConstruction = true
-								expectsCodeBlock = true
-							} else {
-								return (nil, .init(type: .parsing, description: "Starting if construction before ending last one.", line: lineNumber, word: wordNumber))
-							}
+						} else if word == "IF" && core.configuration.flags.contains(.allowMultiline) && expectsCodeBlock {
+							currentLine.append(.if_keyword)
+							blocks.append(.IF)
+							codeBlocks.append([])
+							expectsCodeBlock = true
+						} else if word == "WHILE" && core.configuration.flags.contains(.allowMultiline) && expectsCodeBlock {
+							currentLine.append(.while_keyword)
+							blocks.append(.WHILE)
+							codeBlocks.append([])
+							expectsCodeBlock = true
 						} else if word == "FN" && core.configuration.flags.contains(.allowMultiline) {
-							if !hasStartedFunction {
-								currentLine.append(.function_keyword)
-								hasStartedFunction = true
-								expectsCodeBlock = true
-							} else {
-								return (nil, .init(type: .parsing, description: "Starting function before ending last one.", line: lineNumber, word: wordNumber))
-							}
+							currentLine.append(.function_keyword)
+							blocks.append(.FUNCTION)
+							codeBlocks.append([])
+							expectsCodeBlock = true
 						} else {
 							if !headerMacros.contains(word) {
 								if word == "USE" && core.configuration.flags.contains(.allowMultiline) {
@@ -200,104 +191,52 @@ class GBParser {
 						
 						currentLine.append(.function_invocation(.init(name: name, arguments: arguments)))
 					} else if word == "/IF" {
-						if hasStartedIfConstruction {
-							hasStartedIfConstruction = false
-							expectsCodeBlock = hasStartedFunction
-							
-							if hasStartedFunction {
-								functionBlock.append([.code_block(codeBlock)])
+						if blocks.last == .IF {
+							if codeBlocks.count == 1 {
+								currentLine.append(.code_block(codeBlocks[0]))
 							} else {
-								result.append([.code_block(codeBlock)])
+								codeBlocks[codeBlocks.endIndex - 2].append([.code_block(codeBlocks.last!)])
 							}
 							
-							codeBlock = []
-							lineNumberInCodeBlock = 0
+							blocks.removeLast()
+							codeBlocks.removeLast()
+							
+							expectsCodeBlock = blocks.count != 0
 						} else {
 							return (nil, .init(type: .parsing, description: "Ending if construction before starting one.", line: lineNumber, word: wordNumber))
 						}
+					} else if word == "/WHILE" {
+						if blocks.last == .WHILE {
+							if codeBlocks.count == 1 {
+								currentLine.append(.code_block(codeBlocks[0]))
+							} else {
+								codeBlocks[codeBlocks.endIndex - 2].append([.code_block(codeBlocks.last!)])
+							}
+							
+							blocks.removeLast()
+							codeBlocks.removeLast()
+							
+							expectsCodeBlock = blocks.count != 0
+						} else {
+							return (nil, .init(type: .parsing, description: "Ending while construction before starting one.", line: lineNumber, word: wordNumber))
+						}
 					} else if word == "/FN" {
-						if hasStartedFunction {
-							hasStartedFunction = false
-							expectsCodeBlock = false
-							result.append([.code_block(functionBlock)])
-							functionBlock = []
-							lineNumberInCodeBlock = 0
+						if blocks.last == .FUNCTION {
+							if codeBlocks.count == 1 {
+								currentLine.append(.code_block(codeBlocks[0]))
+							} else {
+								codeBlocks[codeBlocks.endIndex - 2].append([.code_block(codeBlocks.last!)])
+							}
+							
+							blocks.removeLast()
+							codeBlocks.removeLast()
+							
+							expectsCodeBlock = blocks.count != 0
 						} else {
 							return (nil, .init(type: .parsing, description: "Ending function before starting one.", line: lineNumber, word: wordNumber))
 						}
 					} else {
-//						if !expectsCodeBlock {
-							let parts = word.components(separatedBy: ":")
-							
-							if parts.count == 2 && core.configuration.flags.contains(.allowMultiline) {
-								if parts[0].isPlainText {
-									if expectsCodeBlock {
-										storage.lineKeys[parts[0]] = (lineNumber - lostLines - lineNumberInCodeBlock, lineNumberInCodeBlock)
-									} else {
-										storage.lineKeys[parts[0]] = (lineNumber - lostLines, nil)
-									}
-									
-									let word = parts[1]
-									
-									if word.isPlainText {
-										if word == "VAR" {
-											currentLine.append(.variable_keyword)
-										} else if word == "RETURN" {
-											currentLine.append(.return_keyword)
-										} else if word == "IF" {
-											if !hasStartedIfConstruction {
-												currentLine.append(.if_keyword)
-												hasStartedIfConstruction = true
-												expectsCodeBlock = true
-											} else {
-												return (nil, .init(type: .parsing, description: "Starting if construction before ending last one.", line: lineNumber, word: wordNumber))
-											}
-										} else if word == "FN" && core.configuration.flags.contains(.allowMultiline) {
-											if !hasStartedFunction {
-												currentLine.append(.function_keyword)
-												hasStartedFunction = true
-												expectsCodeBlock = true
-											} else {
-												return (nil, .init(type: .parsing, description: "Starting function before ending last one.", line: lineNumber, word: wordNumber))
-											}
-										} else {
-											currentLine.append(.macro(word))
-										}
-									} else if word == "/IF" {
-										if hasStartedIfConstruction {
-											hasStartedIfConstruction = false
-											expectsCodeBlock = hasStartedFunction
-										
-											if hasStartedFunction {
-												functionBlock.append([.code_block(codeBlock)])
-											} else {
-												result.append([.code_block(codeBlock)])
-											}
-											
-											codeBlock = []
-										} else {
-											return (nil, .init(type: .parsing, description: "Ending if construction before starting one.", line: lineNumber, word: wordNumber))
-										}
-									} else if word == "/FN" {
-										if hasStartedFunction {
-											hasStartedFunction = false
-											expectsCodeBlock = false
-											result.append([.code_block(functionBlock)])
-											functionBlock = []
-											lineNumberInCodeBlock = 0
-										} else {
-											return (nil, .init(type: .parsing, description: "Ending function before starting one.", line: lineNumber, word: wordNumber))
-										}
-									} else {
-										return (nil, .init(type: .parsing, description: "Unexpected token: \(word).", line: lineNumber, word: wordNumber))
-									}
-								}
-							} else {
-								return (nil, .init(type: .parsing, description: "Unexpected token: \(word).", line: lineNumber, word: wordNumber))
-							}
-//						} else {
-//							return (nil, .init(type: .parsing, description: "Unexpected token: \(word).", line: lineNumber, word: wordNumber))
-//						}
+						return (nil, .init(type: .parsing, description: "Unexpected token: \(word).", line: lineNumber, word: wordNumber))
 					}
 				} else {
 					if hasStartedLogicalExpression {
@@ -583,31 +522,34 @@ class GBParser {
 			
 			if !currentLine.isEmpty {
 				if expectsCodeBlock {
-					if hasStartedFunction {
-						if case .function_keyword = currentLine[safely: 0] {
-							result.append(currentLine)
-						} else {
-							if case .if_keyword = currentLine[safely: 0] {
-								functionBlock.append(currentLine)
-							} else if hasStartedIfConstruction {
-								codeBlock.append(currentLine)
-							} else {
-								functionBlock.append(currentLine)
-							}
-							
-							lostLines += 1
-							lineNumberInCodeBlock += 1
-						}
-					} else {
-						if case .if_keyword = currentLine[safely: 0] {
-							result.append(currentLine)
-						} else {
-							lineNumberInCodeBlock += 1
-							codeBlock.append(currentLine)
-						}
+					var firstIsKeyword = false
+					
+					switch currentLine.first! {
+						case .if_keyword:
+							firstIsKeyword = true
+						case .function_keyword:
+							firstIsKeyword = true
+						case .while_keyword:
+							firstIsKeyword = true
+						default:
+							firstIsKeyword = false
 					}
 					
-					lostLines += 1
+					if blocks.count > 1 {
+						if firstIsKeyword {
+							codeBlocks[codeBlocks.endIndex - 2].append(currentLine)
+						} else {
+							codeBlocks[codeBlocks.endIndex - 1].append(currentLine)
+						}
+					} else if blocks.count == 1 {
+						if firstIsKeyword {
+							result.append(currentLine)
+						} else {
+							codeBlocks[codeBlocks.endIndex - 1].append(currentLine)
+						}
+					} else {
+						result.append(currentLine)
+					}
 				} else {
 					result.append(currentLine)
 				}

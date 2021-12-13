@@ -22,7 +22,7 @@ class GBInterpreter {
 		case macro_execution(String)
 		case variable_assignment(String?, GBStorage.ValueType?)
 		case if_statement(GBLogicalExpression?, [[GBToken]]?)
-		case jump((Int, Int?)?, GBLogicalExpression?)
+		case while_statement(GBLogicalExpression?, [[GBToken]]?)
 		case function_definition(GBFunctionDefinition?, [[GBToken]]?)
 		case return_value(GBValue?)
 	}
@@ -89,21 +89,24 @@ class GBInterpreter {
 							} else {
 								return (nil, nil, .init(type: .interpreting, description: "Line, where function is 1st word, can't contain more instruction", line: lineNumber, word: tokenNumber))
 							}
-						case .comment:
-							lineNumber += 1
-							continue
-						case .jump_keyword:
-							task = .jump(nil, nil)
 						case .macro(let key):
 							task = .macro_execution(key)
 						case .variable_keyword:
 							task = .variable_assignment(nil, nil)
 						case .if_keyword:
 							task = .if_statement(nil, nil)
+						case .while_keyword:
+							task = .while_statement(nil, nil)
 						case .code_block(let codeBlock):
 							if case .function_definition(let definition, let block) = task {
 								if block == nil {
 									task = .function_definition(definition, codeBlock)
+								} else {
+									return (nil, nil, .init(type: .interpreting, description: "Too many code blocks for if statement.", line: lineNumber, word: tokenNumber))
+								}
+							} else if case .while_statement(let condition, let block) = task {
+								if block == nil {
+									task = .while_statement(condition, codeBlock)
 								} else {
 									return (nil, nil, .init(type: .interpreting, description: "Too many code blocks for if statement.", line: lineNumber, word: tokenNumber))
 								}
@@ -120,27 +123,7 @@ class GBInterpreter {
 							return (nil, nil, .init(type: .interpreting, description: "Unknown token.", line: lineNumber, word: tokenNumber))
 					}
 				} else {
-					if case .jump(let jumpLineNumber, let condition) = task {
-						if jumpLineNumber == nil {
-							if case .string(let value) = token {
-								if let lineNumber = storage.lineKeys[value] {
-									task = .jump(lineNumber, nil)
-								} else {
-									return (nil, nil, .init(type: .interpreting, description: "No jump key with specified value: \(value).", line: lineNumber, word: tokenNumber))
-								}
-							} else {
-								return (nil, nil, .init(type: .interpreting, description: "Invalid argument type. Expected STRING.", line: lineNumber, word: tokenNumber))
-							}
-						} else if condition == nil {
-							if case .logical_expression(let expression) = token {
-								task = .jump(jumpLineNumber, expression)
-							} else {
-								return (nil, nil, .init(type: .interpreting, description: "Invalid argument type. Expected logical expression.", line: lineNumber, word: tokenNumber))
-							}
-						} else {
-							return (nil, nil, .init(type: .interpreting, description: "Too many arguments for jump. Expected 1 or 2.", line: lineNumber, word: tokenNumber))
-						}
-					} else if case .function_definition(let definition, let block) = task {
+					if case .function_definition(let definition, let block) = task {
 						if definition == nil && block == nil {
 							if case .function_definition(let definition) = token {
 								task = .function_definition(definition, nil)
@@ -387,7 +370,7 @@ class GBInterpreter {
 									arguments.append(.url(URL(string: variable.value)!))
 								}
 							} else {
-								arguments.append(.string(key))
+								return (nil, nil, .init(type: .interpreting, description: "Variable \"\(key)\" doesn't exist.", line: lineNumber, word: tokenNumber))
 							}
 						} else {
 							return (nil, nil, .init(type: .interpreting, description: "Invalid argument for macro.", line: lineNumber, word: tokenNumber))
@@ -408,53 +391,27 @@ class GBInterpreter {
 						} else {
 							return (nil, nil, .init(type: .interpreting, description: "Invalid number of arguments for if statement.", line: lineNumber, word: tokenNumber))
 						}
+					} else if case .while_statement(let condition, let codeBlock) = task {
+						if condition == nil {
+							if case .logical_expression(let expression) = token {
+								task = .while_statement(expression, nil)
+							} else {
+								return (nil, nil, .init(type: .interpreting, description: "Invalid token. Expected logical expression.", line: lineNumber, word: tokenNumber))
+							}
+						} else if codeBlock == nil {
+							if case .code_block(let block) = token {
+								task = .while_statement(condition, block)
+							} else {
+								return (nil, nil, .init(type: .interpreting, description: "Invalid token. Expected code block.", line: lineNumber, word: tokenNumber))
+							}
+						} else {
+							return (nil, nil, .init(type: .interpreting, description: "Invalid number of arguments for while statement.", line: lineNumber, word: tokenNumber))
+						}
 					}
 				}
 			}
 			
-			if case .jump(let newLineNumbers, let condition) = task {
-				if let newLineNumbers = newLineNumbers, let condition = condition {
-					let (result, error) = condition.evaluate()
-					
-					if let error = error {
-						return (nil, nil, error)
-					}
-
-					if let result = result {
-						if result {
-							if let codeBlockNewLineNumber = newLineNumbers.1 {
-								lineNumber = codeBlockNewLineNumber
-								task = nil
-								continue
-							} else {
-								if isInsideCodeBlock {
-									return (nil, newLineNumbers.0, nil)
-								} else {
-									lineNumber = newLineNumbers.0
-									task = nil
-									continue
-								}
-							}
-						}
-					}
-				} else if let newLineNumbers = newLineNumbers {
-					if let codeBlockNewLineNumber = newLineNumbers.1 {
-						lineNumber = codeBlockNewLineNumber
-						task = nil
-						continue
-					} else {
-						if isInsideCodeBlock {
-							return (nil, newLineNumbers.0, nil)
-						} else {
-							lineNumber = newLineNumbers.0
-							task = nil
-							continue
-						}
-					}
-				} else {
-					return (nil, nil, .init(type: .interpreting, description: "No jump key specified for jump operation and/or condition.", line: lineNumber, word: 0))
-				}
-			} else if case .macro_execution(let key) = task {
+			if case .macro_execution(let key) = task {
 				if let error = storage.handleMacro(key, arguments: arguments, line: lineNumber) {
 					return (nil, nil, error)
 				}
@@ -500,12 +457,48 @@ class GBInterpreter {
 				
 				task = nil
 				lineNumber += 1
+			} else if case .while_statement(let condition, let block) = task {
+				guard let condition = condition, let block = block else {
+					lineNumber += 1
+					continue
+				}
+				
+				var conditionResult = true
+				
+				while conditionResult {
+					let (result, error) = condition.evaluate()
+					
+					if let error = error {
+						return (nil, nil, error)
+					}
+					
+					if let result = result {
+						conditionResult = result
+						
+						if result {
+							let (_, newLine, error) = interpret(block, isInsideCodeBlock: true)
+							
+							if let error = error {
+								return (nil, nil, error)
+							}
+							
+							if let newLine = newLine {
+								lineNumber = newLine
+								task = nil
+								continue
+							}
+						}
+					}
+				}
+				
+				task = nil
+				lineNumber += 1
 			} else if case .function_definition(let definition, let block) = task {
 				guard let definition = definition, let block = block else {
 					lineNumber += 1
 					continue
 				}
-				
+
 				storage.saveFunction(definition, codeBlock: block)
 				
 				task = nil
@@ -521,7 +514,7 @@ class GBInterpreter {
 			}
 		}
 		
-		if returnType != nil {
+		if returnType != nil && returnType != .void {
 			return (nil, nil, .init(type: .interpreting, description: "Expected value from function."))
 		}
 		

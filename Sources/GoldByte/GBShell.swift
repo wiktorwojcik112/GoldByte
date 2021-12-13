@@ -34,7 +34,7 @@ class GBShell {
 	}
 	
 	func start() {
-		print("GoldByte 1.0 by Wiktor Wójcik\nType :exit to exit.")
+		print("GoldByte \(core.version) by Wiktor Wójcik\nType :exit to exit.")
 		while true {
 			print("\(currentPath.lastPathComponent) >> ", terminator: "")
 			let line = readLine()! + "\n"

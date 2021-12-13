@@ -23,15 +23,14 @@ enum GBToken {
 	case pointer(String)
 	case equation(GBEquation)
 	case if_keyword
-	case jump_keyword
 	case logical_expression(GBLogicalExpression)
 	case code_block([[GBToken]])
-	case comment
 	case function_keyword
 	case function_definition(GBFunctionDefinition)
 	case function_invocation(GBFunctionInvocation)
 	case return_keyword
 	case casted(GBValue, ValueType)
+	case while_keyword
 	
 	enum ValueType: String, CaseIterable {
 		case string = "STRING"

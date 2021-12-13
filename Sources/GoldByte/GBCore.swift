@@ -18,6 +18,15 @@ protocol GBConsole {
 
 /// GoldByte's core
 class GBCore {
+	let version = "1.1"
+	
+	func getInfo() -> String {
+		"""
+		GoldByte \(version)
+		Creator: Wiktor Wójcik
+		"""
+	}
+	
 	typealias GBMacroAction = GBStorage.GBMacroAction
 	
 	static let shared = GBCore(configuration: defaultConfiguration)
@@ -84,7 +93,7 @@ class GBCore {
 		self.filePath = filePath
 		
 		let parsingResult: (parsed: [[GBToken]]?, error: GBError?) = parser.parse(code)
-		
+
 		if let error = parsingResult.error {
 			return error
 		}
@@ -94,7 +103,6 @@ class GBCore {
 		}
 		
 		let (_, _, error) = interpreter.interpret(parsingResult.parsed!)
-		
 		return error
 	}
 	
@@ -118,7 +126,30 @@ class GBCore {
 			print(DebugTools.formatParsingResult(parsingResult.parsed!))
 		}
 		
-		let (_, _, error) = interpreter.interpret(parsingResult.parsed!)
+		let (_, _, initialError) = interpreter.interpret(parsingResult.parsed!)
+		
+		if let error = initialError {
+			errorHandler.handle(error)
+			
+			if configuration.flags.contains(.showExitMessage) {
+				print("Program exited with exit code: 1")
+			}
+			
+			return
+		}
+		let (code, _, functionError) = storage.getFunction("main", arguments: [], line: 0)
+		
+		if let functionError = functionError {
+			errorHandler.handle(functionError)
+			
+			if configuration.flags.contains(.showExitMessage) {
+				print("Program exited with exit code: 1")
+			}
+			
+			return
+		}
+		
+		let (_, _, error) = interpreter.interpret(code!, isInsideCodeBlock: true, returnType: .void)
 		
 		if let error = error {
 			errorHandler.handle(error)
@@ -129,6 +160,7 @@ class GBCore {
 			
 			return
 		}
+		
 		
 		if configuration.flags.contains(.showExitMessage) {
 			print("Program exited with exit code: 0")

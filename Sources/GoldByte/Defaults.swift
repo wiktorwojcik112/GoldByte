@@ -12,7 +12,7 @@ extension GBCore {
 		GBStorage.buildMacros {
 			GBMacro("USE") { arguments, line in
 				if arguments.count != 1 {
-					return .init(type: .macro, description: "Expect 1 argument, got \(arguments.count).", line: line, word: 0)
+					return .init(type: .macro, description: "Expected 1 argument, got \(arguments.count).", line: line, word: 0)
 				}
 				
 				if case .string(let value) = arguments[0] {

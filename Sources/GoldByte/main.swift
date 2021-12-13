@@ -22,9 +22,14 @@ if CommandLine.arguments.count == 1 {
 	let shell = GBShell()
 	shell.start()
 } else {
+	if CommandLine.arguments[1] == "-info" {
+		print(GBCore.shared.getInfo())
+		exit(0)
+	}
+	
 	if CommandLine.arguments[1] == "-d" {
-		options = .DebugMode
-		fileIndex += 1
+		//options = .DebugMode
+		//fileIndex += 1
 	}
 	
 	var pathToFile = (CommandLine.arguments[fileIndex] as NSString).expandingTildeInPath
@@ -42,7 +47,7 @@ if CommandLine.arguments.count == 1 {
 		let code = try String(contentsOfFile: pathToFile)
 		
 		GBCore.shared.addMacros(GBCore.shared.getMacSpecificMacros(withStorage: GBCore.shared.storage))
-		
+
 		if options == .DebugMode {
 			GBCore.shared.debug(code: code, filePath: pathToFile)
 		} else {

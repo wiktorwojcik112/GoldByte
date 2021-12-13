@@ -48,12 +48,11 @@ class GBStorage {
 		}
 	}
 	
-	var lineKeys: [String: (Int, Int?)] = [:]
 	var functions: [String: GBFunction] = [:]
 	
 	func generateVariables(forFunction functionName: String, withArguments arguments: [GBFunctionArgument], withScope scope: Scope) {
 		let function = functions[functionName]!
-		
+
 		for (n, argument) in arguments.enumerated() {
 			self[function.definition.arguments[n].name] = .init(value: argument.type == .string ? argument.value.replaceKeywordCharacters() : argument.value, type: argument.type, scope: scope)
 		}
