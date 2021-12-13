@@ -30,6 +30,7 @@ class GBStorage {
 	}
 	
 	enum ValueType: String, CaseIterable {
+		case variable = "VARIABLE"
 		case null = "NULL"
 		case void = "VOID"
 		case string = "STRING"

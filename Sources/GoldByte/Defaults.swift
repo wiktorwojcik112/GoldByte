@@ -247,8 +247,10 @@ extension GBCore {
 
 					var ignoreInputType = false
 					
-					if case .bool(let _) = arguments[2] {
-						ignoreInputType = true
+					if arguments.count == 3 {
+						if case .bool(let _) = arguments[2] {
+							ignoreInputType = true
+						}
 					}
 					
 					if case .string(let value) = arguments[0] {
