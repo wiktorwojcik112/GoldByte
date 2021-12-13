@@ -149,13 +149,13 @@ class GBCore {
 			return
 		}
 		
-		let (_, _, error) = interpreter.interpret(code!, isInsideCodeBlock: true, returnType: .void)
+		let (_, exitCode, error) = interpreter.interpret(code!, isInsideCodeBlock: true, returnType: .void)
 		
 		if let error = error {
 			errorHandler.handle(error)
 			
 			if configuration.flags.contains(.showExitMessage) {
-				print("Program exited with exit code: 1")
+				print("Program exited with exit code: \(exitCode)")
 			}
 			
 			return
@@ -163,7 +163,7 @@ class GBCore {
 		
 		
 		if configuration.flags.contains(.showExitMessage) {
-			print("Program exited with exit code: 0")
+			print("Program exited with exit code: \(exitCode)")
 		}
 	}
 }

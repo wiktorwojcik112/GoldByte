@@ -31,6 +31,7 @@ enum GBToken {
 	case return_keyword
 	case casted(GBValue, ValueType)
 	case while_keyword
+	case exit_keyword
 	
 	enum ValueType: String, CaseIterable {
 		case string = "STRING"

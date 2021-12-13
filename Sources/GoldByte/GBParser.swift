@@ -134,7 +134,9 @@ class GBParser {
 					}
 					
 					if word.isPlainText {
-						if word == "RETURN" && expectsCodeBlock {
+						if word == "EXIT" {
+							currentLine.append(.exit_keyword)
+						} else if word == "RETURN" && expectsCodeBlock {
 							currentLine.append(.return_keyword)
 						} else if word == "VAR" {
 							currentLine.append(.variable_keyword)

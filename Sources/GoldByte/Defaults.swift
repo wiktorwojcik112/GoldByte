@@ -160,10 +160,6 @@ extension GBCore {
 				}
 			}
 			
-			GBMacro("EXIT") { _, _ in
-				return .init(type: .planned, description: "Exit macro has been called.")
-			}
-			
 			GBMacro("ASSIGN") { arguments, line in
 				var modifiedVariable = ""
 				
