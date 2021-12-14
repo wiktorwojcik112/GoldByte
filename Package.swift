@@ -12,7 +12,6 @@ let package = Package(
             dependencies: [],
 			resources: [
 				.process("Resources/std.txt"),
-				.process("Resources/array.txt")
 			]),
         .testTarget(
             name: "GoldByteTests",
