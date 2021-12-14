@@ -1,0 +1,5 @@
+NAMESPACE StringUtils
+	FN concat(left:STRING,right:STRING):STRING
+		RETURN "%(left) %(right)"
+	/FN
+/NAMESPACE

@@ -10,8 +10,15 @@ let package = Package(
         .executableTarget(
             name: "GoldByte",
             dependencies: [],
+			exclude: [
+				"CHANGELOG.md",
+				"README.md"
+			],
 			resources: [
 				.process("Resources/std.txt"),
+				.process("Resources/math.txt"),
+				.process("Resources/stringutils.txt"),
+				.process("Resources/arrays.txt"),
 			]),
         .testTarget(
             name: "GoldByteTests",

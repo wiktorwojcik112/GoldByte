@@ -1,0 +1,52 @@
+NAMESPACE Math
+	FN sqrt(number:NUMBER):NUMBER
+		VAR NUMBER i 1
+
+		WHILE # i != number #
+			VAR NUMBER multiplied <i * i>
+			
+			IF # multiplied == number #
+				RETURN i
+			/IF
+
+			ASSIGN $i <i + 1>
+		/WHILE
+
+		RETURN 0
+	/FN
+
+	FN power(number:NUMBER,power:NUMBER):NUMBER
+		IF # power == 0 #
+			RETURN 1
+		/IF
+
+		IF # power == 1 #
+			RETURN number
+		/IF
+
+		VAR NUMBER result 0
+		ASSIGN $result number
+
+		VAR NUMBER i 1
+
+		WHILE # i != power #
+			ASSIGN $result <result * number>
+			ASSIGN $i <i + 1>
+		/WHILE
+
+		RETURN result
+	/FN
+	
+	FN random(min:NUMBER,max:NUMBER):NUMBER
+		VAR NUMBER __temporary__ 0
+		RAND $__temporary__ min max
+		RETURN __temporary__
+	/FN
+	
+	FN modulo(number:NUMBER,modulo:NUMBER):NUMBER
+		VAR NUMBER __temporary__ 0
+		MODULO $__temporary__ number modulo
+		RETURN __temporary__
+	/FN
+/NAMESPACE
+

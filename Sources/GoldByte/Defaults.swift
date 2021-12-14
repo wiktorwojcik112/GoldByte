@@ -12,8 +12,40 @@ extension GBCore {
 		GBStorage.buildMacros {
 			GBMacro("MODULO") { arguments, line in
 				if arguments.count != 3 {
-					return .init(type: .macro, description: "Expected 3 arguments, got \(arguments.count).", line: line, word: 0
+					return .init(type: .macro, description: "Expected 3 arguments, got \(arguments.count).", line: line, word: 0)
 				}
+				
+				var variable = ""
+				var number = 0
+				var modulo = 0
+				
+				if case .pointer(let value) = arguments[0] {
+					if storage.variableExists(value) {
+						if storage[value].type == .number {
+							variable = value
+						} else {
+							return .init(type: .macro, description: "Variable \"\(value)\" should be of type NUMBER.", line: line, word: 0)
+						}
+					} else {
+						return .init(type: .macro, description: "Variable \"\(value)\" doesn't exist.", line: line, word: 0)
+					}
+				} else {
+					return .init(type: .macro, description: "Invalid argument type. Expected pointer, got \"\(arguments[0].type)\"", line: line, word: 0)
+				}
+				
+				if case .number(let value) = arguments[1] {
+					number = Int(value)
+				} else {
+					return .init(type: .macro, description: "Invalid argument type. Expected NUMBER, got \"\(arguments[1].type)\"", line: line, word: 0)
+				}
+				
+				if case .number(let value) = arguments[2] {
+					modulo = Int(value)
+				} else {
+					return .init(type: .macro, description: "Invalid argument type. Expected NUMBER, got \"\(arguments[2].type)\"", line: line, word: 0)
+				}
+				
+				storage[variable] = .init(value: String(Float(number % modulo)), type: .number, scope: storage[variable].scope)
 								 
 				return nil
 			}
