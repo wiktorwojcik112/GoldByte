@@ -35,6 +35,7 @@ enum GBValue: Equatable {
 	case number(Float)
 	case pointer(String)
 	case url(URL)
+	case array([GBValue])
 	
 	func getValue<T>(forType type: T.Type) -> T? {
 		if case .bool(let boolean) = self {
@@ -76,6 +77,8 @@ enum GBValue: Equatable {
 				return "POINTER"
 			case .url(_):
 				return "URL"
+			case .array(_):
+				return "ARRAY"
 		}
 		
 		return "NULL"

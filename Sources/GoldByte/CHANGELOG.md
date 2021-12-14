@@ -8,3 +8,4 @@ Initial release
 - Add WHILE
 - ADD NAMESPACE
 - No top level code. "main" function is required.
+- Add arrays

@@ -30,13 +30,16 @@ class GBStorage {
 	}
 	
 	enum ValueType: String, CaseIterable {
-		case variable = "VARIABLE"
+		// These are helper types
 		case null = "NULL"
 		case void = "VOID"
+		case variable = "VARIABLE"
+		
 		case string = "STRING"
 		case number = "NUMBER"
 		case bool = "BOOL"
 		case url = "URL"
+		case any = "ANY"
 	}
 	
 	var variables = [String: GBVariable]()
@@ -50,6 +53,8 @@ class GBStorage {
 	}
 	
 	var functions: [String: GBFunction] = [:]
+	
+	var disabledMacros: Set<String> = ["DYN_VAR_MAKE", "DYN_VAR_READ"]
 	
 	func generateVariables(forFunction functionName: String, withArguments arguments: [GBFunctionArgument], withScope scope: Scope) {
 		var namespaces = functionName.components(separatedBy: "::")
@@ -99,7 +104,9 @@ class GBStorage {
 			
 			for (n, functionDefinedArgument) in function.definition.arguments.enumerated() {
 				if functionDefinedArgument.type.rawValue != arguments[n].type.rawValue {
-					return (nil, nil, .init(type: .interpreting, description: "Invalid type for argument for function \"\(name)\". Expected \(functionDefinedArgument.type), got \(arguments[n].type).", line: line, word: 0))
+					if functionDefinedArgument.type != .any {
+						return (nil, nil, .init(type: .interpreting, description: "Invalid type for argument for function \"\(name)\". Expected \(functionDefinedArgument.type), got \(arguments[n].type).", line: line, word: 0))
+					}
 				}
 			}
 			
@@ -117,7 +124,7 @@ class GBStorage {
 			namespaces = namespaces.map { "[\($0)]" }
 			
 			key = namespaces.joined(separator: "") + key
-			
+
 			if let variable = variables[key] {
 				if variable.type == newValue.type {
 					variables[key] = newValue
@@ -147,7 +154,11 @@ class GBStorage {
 	
 	func handleMacro(_ key: String, arguments: [GBValue], line: Int) -> GBError? {
 		if let action = macros[key] {
-			return action(arguments, line)
+			if !disabledMacros.contains(key) {
+				return action(arguments, line)
+			} else {
+				return .init(type: .type, description: "Macro [\(key)] is disabled.", line: line, word: 0)
+			}
 		} else {
 			return .init(type: .type, description: "Unknown macro: [\(key)]", line: line, word: 0)
 		}

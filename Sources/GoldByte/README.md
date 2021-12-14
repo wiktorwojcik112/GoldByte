@@ -61,7 +61,7 @@ NUMBER - number                		234            5564            5.30            
 STING - string                      "Test"       "ffff"
 BOOL - boolean                      true         false         # 5 = 4 #
 ARRAY - collection                  [5 | "test" | false]
-POINTER - points to variable        $example
+POINTER - points to variable        $example												
 
 
 > main.goldybte

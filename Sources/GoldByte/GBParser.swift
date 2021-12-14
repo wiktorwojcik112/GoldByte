@@ -641,7 +641,7 @@ extension String {
 	}
 	
 	var isNumber: Bool {
-		Int(self) != nil
+		Float(self) != nil
 	}
 	
 	var isBool: Bool {
@@ -649,7 +649,7 @@ extension String {
 	}
 	
 	var isTypeAnnotation: Bool {
-		GBStorage.ValueType.allCases.map { $0.rawValue }.contains(self)
+		return GBStorage.ValueType.allCases.map { $0.rawValue }.contains(self)
 	}
 	
 	var isPointer: Bool {

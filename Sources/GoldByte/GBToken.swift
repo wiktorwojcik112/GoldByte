@@ -60,6 +60,8 @@ enum GBToken {
 					}
 				case .url(let url):
 					castedValue = url.path
+				case .array(_):
+					return (nil, .init(type: .interpreting, description: "Unable to cast array."))
 			}
 			
 			switch type {
@@ -88,6 +90,6 @@ enum GBToken {
 			}
 		}
 			
-		return (nil, .init(type: .interpreting, description: "Use cast only on cast token"))
+		return (nil, .init(type: .interpreting, description: "Use cast only on cast token."))
 	}
 }

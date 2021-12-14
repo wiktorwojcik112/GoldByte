@@ -9,7 +9,7 @@ FN input(text:STRING):STRING
 	RETURN __temporary__
 /FN
 
-NAMESPACE math
+NAMESPACE Math
 	FN power(number:NUMBER,power:NUMBER):NUMBER
 		IF # power == 0 #
 			RETURN 1
@@ -36,5 +36,34 @@ NAMESPACE math
 		VAR NUMBER __temporary__ 0
 		RAND $__temporary__ min max
 		RETURN __temporary__
+	/FN
+/NAMESPACE
+
+
+
+NAMESPACE Arrays
+	FN insert(value:ANY,index:NUMBER,name:STRING):VOID
+		ENABLE "DYN_VAR_MAKE"
+		ENABLE "DYN_VAR_READ"
+
+		VAR STRING arrayCell "%(name) %(index)"
+		DYN_VAR_MAKE STRING arrayCell value
+		
+		DISABLE "DYN_VAR_MAKE"
+		DISABLE "DYN_VAR_READ"
+	/FN
+	
+	FN read(index:NUMBER,name:STRING):STRING
+		ENABLE "DYN_VAR_MAKE"
+		ENABLE "DYN_VAR_READ"
+		
+		VAR STRING arrayCell "%(name) %(index)"
+		VAR STRING result ""
+		DYN_VAR_READ STRING arrayCell $result
+		
+		DISABLE "DYN_VAR_MAKE"
+		DISABLE "DYN_VAR_READ"
+		
+		RETURN result
 	/FN
 /NAMESPACE

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import AppKit
 
 class GBInterpreter {
 	struct Scope: Equatable {
@@ -47,6 +48,8 @@ class GBInterpreter {
 		var lineNumber = continueAt
 		let currentScope = scope
 		var task: GBTask? = nil
+		
+		var globalVariable = false
 		
 		while lineNumber < code.endIndex {
 			let line = code[lineNumber]
@@ -260,6 +263,12 @@ class GBInterpreter {
 								}
 							} else {
 								return (nil, 1, .init(type: .interpreting, description: "Unknown token.", line: lineNumber, word: tokenNumber))
+							}
+						} else if tokenNumber == 4 {
+							if case .bool(let value) = token {
+								globalVariable = value
+							} else {
+								return (nil, 1, .init(type: .interpreting, description: "Invalid token: \(token).", line: lineNumber, word: tokenNumber))
 							}
 						} else {
 							return (nil, 1, .init(type: .interpreting, description: "Too many values for variable assignment.", line: lineNumber, word: tokenNumber))
@@ -491,8 +500,13 @@ class GBInterpreter {
 					keyWithNamespace = namespace + "::" + key
 				}
 				
-				storage[keyWithNamespace] = .init(value: value, type: type, scope: currentScope)
+				if globalVariable {
+					storage[keyWithNamespace] = .init(value: value, type: type, scope: .global)
+				} else {
+					storage[keyWithNamespace] = .init(value: value, type: type, scope: currentScope)
+				}
 				
+				globalVariable = false
 				task = nil
 				lineNumber += 1
 			} else if case .namespace(let name, let block) = task {
