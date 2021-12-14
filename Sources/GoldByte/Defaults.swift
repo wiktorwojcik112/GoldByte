@@ -10,9 +10,17 @@ import Foundation
 extension GBCore {
 	func getMacros(withStorage storage: GBStorage) -> [String: GBMacroAction] {
 		GBStorage.buildMacros {
+			GBMacro("MODULO") { arguments, line in
+				if arguments.count != 3 {
+					return .init(type: .macro, description: "Expected 3 arguments, got \(arguments.count).", line: line, word: 0
+				}
+								 
+				return nil
+			}
+			
 			GBMacro("DYN_VAR_MAKE") { arguments, line in
 				if arguments.count != 3 {
-					return .init(type: .macro, description: "Expected 2 arguments, got \(arguments.count).", line: line, word: 0)
+					return .init(type: .macro, description: "Expected 3 arguments, got \(arguments.count).", line: line, word: 0)
 				}
 				
 				var name = ""
@@ -52,7 +60,7 @@ extension GBCore {
 			
 			GBMacro("DYN_VAR_READ") { arguments, line in
 				if arguments.count != 3 {
-					return .init(type: .macro, description: "Expected 2 arguments, got \(arguments.count).", line: line, word: 0)
+					return .init(type: .macro, description: "Expected 3 arguments, got \(arguments.count).", line: line, word: 0)
 				}
 				
 				var name = ""
