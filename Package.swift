@@ -17,7 +17,7 @@ let package = Package(
 			resources: [
 				.process("Resources/std.txt"),
 				.process("Resources/math.txt"),
-				.process("Resources/stringutils.txt"),
+				.process("Resources/strings.txt"),
 				.process("Resources/arrays.txt"),
 			]),
         .testTarget(

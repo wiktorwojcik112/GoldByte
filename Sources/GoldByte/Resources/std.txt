@@ -1,3 +1,7 @@
+USE "strings"
+USE "arrays"
+USE "math"
+
 FN input(text:STRING):STRING
 	VAR STRING __temporary__ ""
 	PRINT text

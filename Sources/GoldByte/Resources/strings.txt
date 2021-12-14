@@ -1,4 +1,4 @@
-NAMESPACE StringUtils
+NAMESPACE Strings
 	FN concat(left:STRING,right:STRING):STRING
 		RETURN "%(left) %(right)"
 	/FN
