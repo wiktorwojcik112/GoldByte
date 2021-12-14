@@ -68,16 +68,31 @@ class GBInterpreter {
 						case .function_keyword:
 							task = .function_definition(nil, nil)
 						case .function_invocation(let invocation):
+							var arguments = [GBFunctionArgument]()
+							
+							for argument in invocation.arguments {
+								if argument.type == .variable {
+									if storage.variableExists(argument.value) {
+										let variable = storage[argument.value]
+										arguments.append(.init(value: variable.value, type: variable.type))
+									} else {
+										return (nil, 1, .init(type: .interpreting, description: "Variable \"\(argument.value)\" doesn't exist.", line: lineNumber, word: tokenNumber))
+									}
+								} else {
+									arguments.append(argument)
+								}
+							}
+							
 							if line.count == 1 {
-								let (function, type, error) = storage.getFunction(invocation.name, arguments: invocation.arguments, line: lineNumber)
+								let (function, type, error) = storage.getFunction(invocation.name, arguments: arguments, line: lineNumber)
 								
 								if let error = error {
 									return (nil, 1, error)
 								}
 								
-								storage.generateVariables(forFunction: invocation.name, withArguments: invocation.arguments, withScope: scope)
-								
 								let scope = GBStorage.Scope(UUID())
+								
+								storage.generateVariables(forFunction: invocation.name, withArguments: arguments, withScope: scope)
 								
 								let (returnValue, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type)
 								
@@ -335,13 +350,28 @@ class GBInterpreter {
 						} else if case .pointer(let value) = token {
 							arguments.append(.pointer(value))
 						} else if case .function_invocation(let invocation) = token {
-							let (function, type, error) = storage.getFunction(invocation.name, arguments: invocation.arguments, line: lineNumber)
+							var functionArguments = [GBFunctionArgument]()
+							
+							for argument in invocation.arguments {
+								if argument.type == .variable {
+									if storage.variableExists(argument.value) {
+										let variable = storage[argument.value]
+										functionArguments.append(.init(value: variable.value, type: variable.type))
+									} else {
+										return (nil, 1, .init(type: .interpreting, description: "Variable \"\(argument.value)\" doesn't exist.", line: lineNumber, word: tokenNumber))
+									}
+								} else {
+									functionArguments.append(argument)
+								}
+							}
+							
+							let (function, type, error) = storage.getFunction(invocation.name, arguments: functionArguments, line: lineNumber)
 							
 							if let error = error {
 								return (nil, 1, error)
 							}
 							
-							storage.generateVariables(forFunction: invocation.name, withArguments: invocation.arguments, withScope: scope)
+							storage.generateVariables(forFunction: invocation.name, withArguments: functionArguments, withScope: scope)
 							
 							let scope = GBStorage.Scope(UUID())
 							

@@ -25,13 +25,14 @@ class GBParser {
 		var string = ""
 		
 		for word in line {
-			if (word.hasPrefix("\"") && word.hasSuffix("\"")) || (word == "\"\"") {
-				newLine.append(word.replaceKeywordCharactersBetween())
-			} else if word == "\"" && !hasStartedString {
+			if word == "\"" && !hasStartedString {
 				hasStartedString = true
 			} else if word == "\"" && hasStartedString {
+				string.append(" ")
 				newLine.append("\"" + string.replaceKeywordCharactersBetween() + "\"")
 				hasStartedString = false
+			} else if (word.hasPrefix("\"") && word.hasSuffix("\"")) || (word == "\"\"") {
+				newLine.append(word.replaceKeywordCharactersBetween())
 			} else if word.hasPrefix("\"") && !hasStartedString {
 				hasStartedString = true
 				string.append(word)
@@ -490,8 +491,8 @@ class GBParser {
 										arguments.append(.init(value: argumentPart, type: .bool))
 									} else if argumentPart.isNumber {
 										arguments.append(.init(value: argumentPart, type: .number))
-									} else if argumentPart.isURL {
-										arguments.append(.init(value: argumentPart, type: .url))
+									} else if argumentPart.isPlainText {
+										arguments.append(.init(value: argumentPart, type: .variable))
 									} else {
 										return (nil, .init(type: .parsing, description: "Unexpected token: \(argumentPart).", line: lineNumber, word: wordNumber))
 									}
