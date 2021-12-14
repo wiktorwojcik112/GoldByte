@@ -138,6 +138,10 @@ extension GBCore {
 						return .init(type: .macro, description: "Invalid argument type. Expected NUMBER, got \"\(arguments[2].type)\"", line: line, word: 0)
 					}
 					
+					if min > max {
+						return .init(type: .macro, description: "Min number must be lower than max number.", line: line, word: 0)
+					}
+					
 					let randomNumber = Int.random(in: Int(min)...Int(max))
 					
 					storage[variable] = .init(value: String(Float(randomNumber)), type: .number, scope: storage[variable].scope)

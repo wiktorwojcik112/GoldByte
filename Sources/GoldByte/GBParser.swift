@@ -27,6 +27,7 @@ class GBParser {
 		for word in line {
 			if word == "\"" && !hasStartedString {
 				hasStartedString = true
+				string.append(" ")
 			} else if word == "\"" && hasStartedString {
 				string.append(" ")
 				newLine.append("\"" + string.replaceKeywordCharactersBetween() + "\"")
@@ -146,6 +147,11 @@ class GBParser {
 							blocks.append(.IF)
 							codeBlocks.append([])
 							expectsCodeBlock = true
+						} else if word == "NAMESPACE" && core.configuration.flags.contains(.allowMultiline) {
+							currentLine.append(.namespace_keyword)
+							blocks.append(.NAMESPACE)
+							codeBlocks.append([])
+							expectsCodeBlock = true
 						} else if word == "WHILE" && core.configuration.flags.contains(.allowMultiline) && expectsCodeBlock {
 							currentLine.append(.while_keyword)
 							blocks.append(.WHILE)
@@ -169,7 +175,7 @@ class GBParser {
 								return (nil, .init(type: .parsing, description: "Header macros must only be used in header (before any other operation).", line: lineNumber, word: wordNumber))
 							}
 						}
-					} else if word[word.range(of: #"[a-zA-Z]+\([a-zA-Z.,:"_&%$#@!-+ 1-9\^&$+-~`]*\)"#, options: .regularExpression) ?? word.startIndex..<(word.index(word.startIndex, offsetBy: 1))] == word {
+					} else if word[word.range(of: #"[a-zA-Z:]+\([a-zA-Z.,:"_&%$#@!-+ 1-9\^&$+-~`]*\)"#, options: .regularExpression) ?? word.startIndex..<(word.index(word.startIndex, offsetBy: 1))] == word {
 						let name = word.components(separatedBy: "(")[0]
 						
 						let argumentParts = word.components(separatedBy: "(")[1].dropLast().components(separatedBy: ",")
@@ -195,6 +201,21 @@ class GBParser {
 						currentLine.append(.function_invocation(.init(name: name, arguments: arguments)))
 					} else if word == "/IF" {
 						if blocks.last == .IF {
+							if codeBlocks.count == 1 {
+								currentLine.append(.code_block(codeBlocks[0]))
+							} else {
+								codeBlocks[codeBlocks.endIndex - 2].append([.code_block(codeBlocks.last!)])
+							}
+							
+							blocks.removeLast()
+							codeBlocks.removeLast()
+							
+							expectsCodeBlock = blocks.count != 0
+						} else {
+							return (nil, .init(type: .parsing, description: "Ending if construction before starting one.", line: lineNumber, word: wordNumber))
+						}
+					} else if word == "/NAMESPACE" {
+						if blocks.last == .NAMESPACE {
 							if codeBlocks.count == 1 {
 								currentLine.append(.code_block(codeBlocks[0]))
 							} else {
@@ -476,8 +497,8 @@ class GBParser {
 						} else {
 							return (nil, .init(type: .parsing, description: "Invalid token.", line: lineNumber, word: wordNumber))
 						}
-					} else if word.range(of: #"[a-zA-Z]+\([a-zA-Z,0-9\"/: \^&$.?!]*\)"#, options: .regularExpression) != nil {
-						if word[word.range(of: #"[a-zA-Z]+\([a-zA-Z,0-9\"/: \^&$.?!]*\)"#, options: .regularExpression)!] == word {
+					} else if word.range(of: #"[a-zA-Z:]+\([a-zA-Z,0-9\"/: \^&$.?!]*\)"#, options: .regularExpression) != nil {
+						if word[word.range(of: #"[a-zA-Z:]+\([a-zA-Z,0-9\"/: \^&$.?!]*\)"#, options: .regularExpression)!] == word {
 							let name = word.components(separatedBy: "(")[0]
 							
 							let argumentParts = word.components(separatedBy: "(")[1].dropLast().components(separatedBy: ",")
@@ -501,7 +522,7 @@ class GBParser {
 							
 							currentLine.append(.function_invocation(.init(name: name, arguments: arguments)))
 						} else {
-							return (nil, .init(type: .parsing, description: "Invalid token.", line: lineNumber, word: wordNumber))
+							return (nil, .init(type: .parsing, description: "Invalid token: \(word).", line: lineNumber, word: wordNumber))
 						}
 					} else if word.isString {
 						currentLine.append(.string(word.replacingOccurrences(of: "\"", with: "")))
@@ -533,6 +554,8 @@ class GBParser {
 						case .function_keyword:
 							firstIsKeyword = true
 						case .while_keyword:
+							firstIsKeyword = true
+						case .namespace_keyword:
 							firstIsKeyword = true
 						default:
 							firstIsKeyword = false
@@ -614,7 +637,7 @@ extension String {
 	}
 	
 	var isPlainText: Bool {
-		!isString && !self.contains(where: { "£§!@#$%^&*()+-={}[]:|<>?;'\\,./~".contains($0) })
+		!isString && !self.contains(where: { "£§!@#$%^&*()+-={}[]|<>?;'\\,./~".contains($0) })
 	}
 	
 	var isNumber: Bool {

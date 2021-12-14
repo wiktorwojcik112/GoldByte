@@ -25,6 +25,7 @@ class GBInterpreter {
 		case while_statement(GBLogicalExpression?, [[GBToken]]?)
 		case function_definition(GBFunctionDefinition?, [[GBToken]]?)
 		case return_value(GBValue?)
+		case namespace(String?, [[GBToken]]?)
 	}
 	
 	var core: GBCore!
@@ -41,7 +42,8 @@ class GBInterpreter {
 		self.debugger = debugger
 	}
 	
-	func interpret(_ code: [[GBToken]], scope: Scope = .global, isInsideCodeBlock: Bool = false, returnType: GBStorage.ValueType? = nil, continueAt: Int = 0) -> (GBValue?, Int, GBError?) {
+	func interpret(_ code: [[GBToken]], scope: Scope = .global, isInsideCodeBlock: Bool = false, returnType: GBStorage.ValueType? = nil, continueAt: Int = 0, namespace: String? = nil, isFunction: Bool = false) -> (GBValue?, Int, GBError?) {
+		let namespace = namespace ?? ""
 		var lineNumber = continueAt
 		let currentScope = scope
 		var task: GBTask? = nil
@@ -61,6 +63,8 @@ class GBInterpreter {
 			for (tokenNumber, token) in line.enumerated() {
 				if tokenNumber == 0 {
 					switch token {
+						case .namespace_keyword:
+							task = .namespace(nil, nil)
 						case .exit_keyword:
 							return (nil, 0, nil)
 						case .return_keyword:
@@ -94,7 +98,7 @@ class GBInterpreter {
 								
 								storage.generateVariables(forFunction: invocation.name, withArguments: arguments, withScope: scope)
 								
-								let (returnValue, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type)
+								let (_, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type, isFunction: true)
 								
 								if let error = functionError {
 									return (nil, 1, error)
@@ -115,17 +119,23 @@ class GBInterpreter {
 						case .while_keyword:
 							task = .while_statement(nil, nil)
 						case .code_block(let codeBlock):
-							if case .function_definition(let definition, let block) = task {
+							if case .namespace(let name, let block) = task {
+								if block == nil {
+									task = .namespace(name, codeBlock)
+								} else {
+									return (nil, 1, .init(type: .interpreting, description: "Too many code blocks for namespace.", line: lineNumber, word: tokenNumber))
+								}
+							} else if case .function_definition(let definition, let block) = task {
 								if block == nil {
 									task = .function_definition(definition, codeBlock)
 								} else {
-									return (nil, 1, .init(type: .interpreting, description: "Too many code blocks for if statement.", line: lineNumber, word: tokenNumber))
+									return (nil, 1, .init(type: .interpreting, description: "Too many code blocks for function.", line: lineNumber, word: tokenNumber))
 								}
 							} else if case .while_statement(let condition, let block) = task {
 								if block == nil {
 									task = .while_statement(condition, codeBlock)
 								} else {
-									return (nil, 1, .init(type: .interpreting, description: "Too many code blocks for if statement.", line: lineNumber, word: tokenNumber))
+									return (nil, 1, .init(type: .interpreting, description: "Too many code blocks for while statement.", line: lineNumber, word: tokenNumber))
 								}
 							} else if case .if_statement(let condition, let block) = task {
 								if block == nil {
@@ -375,7 +385,7 @@ class GBInterpreter {
 							
 							let scope = GBStorage.Scope(UUID())
 							
-							let (returnValue, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type)
+							let (returnValue, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type, isFunction: true)
 							
 							if let error = functionError {
 								return (nil, 1, error)
@@ -406,6 +416,22 @@ class GBInterpreter {
 							}
 						} else {
 							return (nil, 1, .init(type: .interpreting, description: "Invalid argument for macro.", line: lineNumber, word: tokenNumber))
+						}
+					} else if case .namespace(let name, let codeBlock) = task {
+						if name == nil {
+							if case .plain_text(let value) = token {
+								task = .namespace(value, nil)
+							} else {
+								return (nil, 1, .init(type: .interpreting, description: "Invalid token. Expected plain text.", line: lineNumber, word: tokenNumber))
+							}
+						} else if codeBlock == nil {
+							if case .code_block(let block) = token {
+								task = .namespace(name, block)
+							} else {
+								return (nil, 1, .init(type: .interpreting, description: "Invalid token. Expected code block.", line: lineNumber, word: tokenNumber))
+							}
+						} else {
+							return (nil, 1, .init(type: .interpreting, description: "Invalid number of arguments for namespace.", line: lineNumber, word: tokenNumber))
 						}
 					} else if case .if_statement(let condition, let codeBlock) = task {
 						if condition == nil {
@@ -445,6 +471,10 @@ class GBInterpreter {
 			
 			if case .macro_execution(let key) = task {
 				if let error = storage.handleMacro(key, arguments: arguments, line: lineNumber) {
+					var error = error
+					
+					error.description = key + ": " + error.description
+					
 					return (nil, 1, error)
 				}
 				
@@ -455,7 +485,35 @@ class GBInterpreter {
 					return (nil, 1, .init(type: .interpreting, description: "Not enough arguments for variable assignment.", line: lineNumber, word: 0))
 				}
 				
-				storage[key] = .init(value: value, type: type, scope: currentScope)
+				var keyWithNamespace = key
+				
+				if namespace != "" {
+					keyWithNamespace = namespace + "::" + key
+				}
+				
+				storage[keyWithNamespace] = .init(value: value, type: type, scope: currentScope)
+				
+				task = nil
+				lineNumber += 1
+			} else if case .namespace(let name, let block) = task {
+				guard let name = name, let block = block else {
+					lineNumber += 1
+					continue
+				}
+				
+				if namespace == "" {
+					let (_, exitCode, error) = interpret(block, isInsideCodeBlock: true, namespace: name)
+					
+					if let error = error {
+						return (nil, exitCode, error)
+					}
+				} else {
+					let (_, exitCode, error) = interpret(block, isInsideCodeBlock: true, namespace: namespace + "::" + name)
+					
+					if let error = error {
+						return (nil, exitCode, error)
+					}
+				}
 				
 				task = nil
 				lineNumber += 1
@@ -473,10 +531,14 @@ class GBInterpreter {
 				
 				if let result = result {
 					if result {
-						let (_, newLine, error) = interpret(block, isInsideCodeBlock: true)
+						let (returnValue, exitCode, error) = interpret(block, isInsideCodeBlock: true, returnType: returnType)
 						
 						if let error = error {
-							return (nil, 1, error)
+							return (nil, exitCode, error)
+						}
+						
+						if returnValue != nil {
+							return (returnValue, 0, nil)
 						}
 					}
 				}
@@ -502,10 +564,14 @@ class GBInterpreter {
 						conditionResult = result
 						
 						if result {
-							let (_, newLine, error) = interpret(block, isInsideCodeBlock: true)
+							let (returnValue, exitCode, error) = interpret(block, isInsideCodeBlock: true, returnType: returnType)
 							
 							if let error = error {
-								return (nil, 1, error)
+								return (nil, exitCode, error)
+							}
+							
+							if returnValue != nil {
+								return (returnValue, 0, nil)
 							}
 						}
 					}
@@ -518,8 +584,14 @@ class GBInterpreter {
 					lineNumber += 1
 					continue
 				}
+				
+				var definitionWithNamespace = definition
+				
+				if namespace != "" {
+					definitionWithNamespace.name = namespace + "::" + definition.name
+				}
 
-				storage.saveFunction(definition, codeBlock: block)
+				storage.saveFunction(definitionWithNamespace, codeBlock: block)
 				
 				task = nil
 				lineNumber += 1
@@ -534,8 +606,10 @@ class GBInterpreter {
 			}
 		}
 		
-		if returnType != nil && returnType != .void {
-			return (nil, 1, .init(type: .interpreting, description: "Expected value from function."))
+		if isFunction {
+			if returnType != nil && returnType != .void {
+				return (nil, 1, .init(type: .interpreting, description: "Expected value from function."))
+			}
 		}
 		
 		return (nil, 0, nil)

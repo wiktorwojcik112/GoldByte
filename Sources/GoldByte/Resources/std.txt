@@ -1,9 +1,3 @@
-FN random(min:NUMBER,max:NUMBER):NUMBER
-	VAR NUMBER __temporary__ 0
-	RAND $__temporary__ min max
-	RETURN __temporary__
-/FN
-
 FN concat(left:STRING,right:STRING):STRING
 	RETURN "%(left) %(right)"
 /FN
@@ -15,24 +9,32 @@ FN input(text:STRING):STRING
 	RETURN __temporary__
 /FN
 
-FN power(number:NUMBER,power:NUMBER):NUMBER
-	IF # power == 0 #
-		RETURN 1
-	/IF
+NAMESPACE math
+	FN power(number:NUMBER,power:NUMBER):NUMBER
+		IF # power == 0 #
+			RETURN 1
+		/IF
 
-	IF # power == 1 #
-		RETURN number
-	/IF
+		IF # power == 1 #
+			RETURN number
+		/IF
 
-	VAR NUMBER result 0
-	ASSIGN $result number
+		VAR NUMBER result 0
+		ASSIGN $result number
 
-	VAR NUMBER i 1
+		VAR NUMBER i 1
 
-	WHILE # i != power #
-		ASSIGN $result <result * number>
-		ASSIGN $i <i + 1>
-	/WHILE
+		WHILE # i != power #
+			ASSIGN $result <result * number>
+			ASSIGN $i <i + 1>
+		/WHILE
 
-	RETURN result
-/FN
+		RETURN result
+	/FN
+	
+	FN random(min:NUMBER,max:NUMBER):NUMBER
+		VAR NUMBER __temporary__ 0
+		RAND $__temporary__ min max
+		RETURN __temporary__
+	/FN
+/NAMESPACE

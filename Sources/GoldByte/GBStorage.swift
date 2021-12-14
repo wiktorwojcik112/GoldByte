@@ -52,7 +52,14 @@ class GBStorage {
 	var functions: [String: GBFunction] = [:]
 	
 	func generateVariables(forFunction functionName: String, withArguments arguments: [GBFunctionArgument], withScope scope: Scope) {
-		let function = functions[functionName]!
+		var namespaces = functionName.components(separatedBy: "::")
+		var name = namespaces.removeLast()
+		
+		namespaces = namespaces.map { "[\($0)]" }
+		
+		name = namespaces.joined(separator: "") + name
+		
+		let function = functions[name]!
 
 		for (n, argument) in arguments.enumerated() {
 			self[function.definition.arguments[n].name] = .init(value: argument.type == .string ? argument.value.replaceKeywordCharacters() : argument.value, type: argument.type, scope: scope)
@@ -64,10 +71,27 @@ class GBStorage {
 	}
 	
 	func saveFunction(_ definition: GBFunctionDefinition, codeBlock: [[GBToken]]) {
-		functions[definition.name] = .init(definition: definition, codeBlock: codeBlock)
+		var definitionWithNamespace = definition
+		
+		var namespaces = definition.name.components(separatedBy: "::")
+		var name = namespaces.removeLast()
+		
+		namespaces = namespaces.map { "[\($0)]" }
+		
+		name = namespaces.joined(separator: "") + name
+		definitionWithNamespace.name = name
+		
+		functions[name] = .init(definition: definitionWithNamespace, codeBlock: codeBlock)
 	}
 	
 	func getFunction(_ name: String, arguments: [GBFunctionArgument], line: Int) -> ([[GBToken]]?, GBStorage.ValueType?, GBError?) {
+		var namespaces = name.components(separatedBy: "::")
+		var name = namespaces.removeLast()
+		
+		namespaces = namespaces.map { "[\($0)]" }
+		
+		name = namespaces.joined(separator: "") + name
+		
 		if let function = functions[name] {
 			if arguments.count != function.definition.arguments.count {
 				return (nil, nil, .init(type: .interpreting, description: "Expected \(function.definition.arguments.count) arguments, got \(arguments.count).", line: line, word: 0))
@@ -87,6 +111,13 @@ class GBStorage {
 	
 	subscript(_ key: String) -> GBVariable {
 		set {
+			var namespaces = key.components(separatedBy: "::")
+			var key = namespaces.removeLast()
+			
+			namespaces = namespaces.map { "[\($0)]" }
+			
+			key = namespaces.joined(separator: "") + key
+			
 			if let variable = variables[key] {
 				if variable.type == newValue.type {
 					variables[key] = newValue
@@ -99,7 +130,14 @@ class GBStorage {
 		}
 		
 		get {
-			variables[key] ?? GBVariable(value: "", type: .null, scope: .global)
+			var namespaces = key.components(separatedBy: "::")
+			var key = namespaces.removeLast()
+			
+			namespaces = namespaces.map { "[\($0)]" }
+			
+			key = namespaces.joined(separator: "") + key
+			
+			return variables[key] ?? GBVariable(value: "", type: .null, scope: .global)
 		}
 	}
 	
@@ -156,7 +194,7 @@ struct GBFunction {
 }
 
 struct GBFunctionDefinition {
-	let name: String
+	var name: String
 	let returnType: GBStorage.ValueType
 	var arguments: [GBFunctionArgumentDefinition]
 }

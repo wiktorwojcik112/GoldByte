@@ -118,7 +118,7 @@ class GBCore {
 		
 		if let error = parsingResult.error {
 			errorHandler.handle(error)
-			console.text("Program exited with exit code: 1")
+			console.text("Program exited with exit code: 1\n")
 			return
 		}
 		
@@ -132,7 +132,7 @@ class GBCore {
 			errorHandler.handle(error)
 			
 			if configuration.flags.contains(.showExitMessage) {
-				print("Program exited with exit code: 1")
+				print("Program exited with exit code: 1\n")
 			}
 			
 			return
@@ -143,7 +143,7 @@ class GBCore {
 			errorHandler.handle(functionError)
 			
 			if configuration.flags.contains(.showExitMessage) {
-				print("Program exited with exit code: 1")
+				print("Program exited with exit code: 1\n")
 			}
 			
 			return
@@ -155,7 +155,7 @@ class GBCore {
 			errorHandler.handle(error)
 			
 			if configuration.flags.contains(.showExitMessage) {
-				print("Program exited with exit code: 1")
+				print("Program exited with exit code: 1\n")
 			}
 			
 			return
@@ -163,7 +163,7 @@ class GBCore {
 		
 		
 		if configuration.flags.contains(.showExitMessage) {
-			print("Program exited with exit code: \(exitCode!.getValue())")
+			print("Program exited with exit code: \(exitCode!.getValue())\n")
 		}
 	}
 }
