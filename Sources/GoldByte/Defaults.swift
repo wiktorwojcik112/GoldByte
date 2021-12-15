@@ -10,6 +10,48 @@ import Foundation
 extension GBCore {
 	func getMacros(withStorage storage: GBStorage) -> [String: GBMacroAction] {
 		GBStorage.buildMacros {
+			GBMacro("NEW") { arguments, line in
+				if arguments.count != 2 {
+					return .init(type: .macro, description: "Expected 2 arguments, got \(arguments.count).", line: line, word: 0)
+				}
+				
+				var structureNamespace = ""
+				var structureCode = [[GBToken]]()
+				var instanceName = ""
+				
+				if case .string(let id) = arguments[0] {
+					var namespaces = id.components(separatedBy: "::")
+					var name = namespaces.removeLast()
+					
+					namespaces = namespaces.map { "[\($0)]" }
+					
+					name = namespaces.joined(separator: "") + name
+					
+					if storage.structs[name] != nil {
+						structureCode = storage.structs[name]!
+						structureNamespace = namespaces.joined(separator: "")
+					} else {
+						return .init(type: .macro, description: "Structure with name \"\(id)\" doesn't exist.", line: line, word: 1)
+					}
+				} else {
+					return .init(type: .macro, description: "Expected value of type STRING or plain text.", line: line, word: 1)
+				}
+				
+				if case .string(let name) = arguments[1] {
+					instanceName = name
+				} else {
+					return .init(type: .macro, description: "Expected value of type STRING.", line: line, word: 2)
+				}
+
+				let (_, _, error) = self.interpreter.interpret(structureCode, isInsideCodeBlock: true, namespace: structureNamespace + instanceName)
+					
+				if let error = error {
+					return error
+				}
+				
+				return nil
+			}
+			
 			GBMacro("MODULO") { arguments, line in
 				if arguments.count != 3 {
 					return .init(type: .macro, description: "Expected 3 arguments, got \(arguments.count).", line: line, word: 0)
@@ -255,7 +297,33 @@ extension GBCore {
 					if storage.variableExists(variable) {
 						storage.deleteVariable(variable)
 					} else {
-						return .init(type: .macro, description: "Variable \"\(variable)\" doesn't exist.", line: line, word: 0)
+						var namespaces = variable.components(separatedBy: "::")
+						namespaces = namespaces.map { "[\($0)]" }
+						
+						var objectName = namespaces.joined(separator: "")
+						
+						var variablesCount = 0
+						
+						for (name, _) in storage.variables {
+							if name.hasPrefix(objectName) {
+								storage.deleteVariable(name)
+								variablesCount += 1
+							}
+						}
+						
+						var functionsCount = 0
+						
+						for (name, _) in storage.functions {
+							if name.hasPrefix(objectName) {
+								storage.functions.removeValue(forKey: name)
+								
+								functionsCount += 1
+							}
+						}
+						
+						if variablesCount == 0 && functionsCount == 0 {
+							return .init(type: .macro, description: "Object \"\(variable)\" doesn't exist.", line: line, word: 0)
+						}
 					}
 				} else {
 					return .init(type: .macro, description: "Expected POINTER, got \(arguments[0].type).", line: line, word: 0)

@@ -12,4 +12,5 @@ enum GBBlock {
 	case IF
 	case WHILE
 	case NAMESPACE
+	case STRUCT
 }

@@ -84,10 +84,13 @@ class GBStorage {
 		namespaces = namespaces.map { "[\($0)]" }
 		
 		name = namespaces.joined(separator: "") + name
+		
 		definitionWithNamespace.name = name
 		
 		functions[name] = .init(definition: definitionWithNamespace, codeBlock: codeBlock)
 	}
+	
+	var structs: [String: [[GBToken]]] = [:]
 	
 	func getFunction(_ name: String, arguments: [GBFunctionArgument], line: Int) -> ([[GBToken]]?, GBStorage.ValueType?, GBError?) {
 		var namespaces = name.components(separatedBy: "::")

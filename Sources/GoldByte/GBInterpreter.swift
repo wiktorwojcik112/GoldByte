@@ -26,6 +26,7 @@ class GBInterpreter {
 		case function_definition(GBFunctionDefinition?, [[GBToken]]?)
 		case return_value(GBValue?)
 		case namespace(String?, [[GBToken]]?)
+		case structure(String?, [[GBToken]]?)
 	}
 	
 	var core: GBCore!
@@ -75,7 +76,7 @@ class GBInterpreter {
 							task = .function_definition(nil, nil)
 						case .function_invocation(let invocation):
 							var arguments = [GBFunctionArgument]()
-							
+
 							for argument in invocation.arguments {
 								if argument.type == .variable {
 									if storage.variableExists(argument.value) {
@@ -118,6 +119,8 @@ class GBInterpreter {
 							task = .variable_assignment(nil, nil)
 						case .if_keyword:
 							task = .if_statement(nil, nil)
+						case .struct_keyword:
+							task = .structure(nil, nil)
 						case .while_keyword:
 							task = .while_statement(nil, nil)
 						case .code_block(let codeBlock):
@@ -126,6 +129,12 @@ class GBInterpreter {
 									task = .namespace(name, codeBlock)
 								} else {
 									return (nil, 1, .init(type: .interpreting, description: "Too many code blocks for namespace.", line: lineNumber, word: tokenNumber))
+								}
+							} else if case .structure(let name, let block) = task {
+								if block == nil {
+									task = .structure(name, codeBlock)
+								} else {
+									return (nil, 1, .init(type: .interpreting, description: "Too many code blocks for structure.", line: lineNumber, word: tokenNumber))
 								}
 							} else if case .function_definition(let definition, let block) = task {
 								if block == nil {
@@ -366,7 +375,14 @@ class GBInterpreter {
 						} else if case .variable_type(let type) = token {
 							arguments.append(.string(type.rawValue))
 						} else if case .pointer(let value) = token {
-							arguments.append(.pointer(value))
+							var namespaces = value.components(separatedBy: "::")
+							var name = namespaces.removeLast()
+							
+							namespaces = namespaces.map { "[\($0)]" }
+							
+							name = namespaces.joined(separator: "") + name
+							
+							arguments.append(.pointer(name))
 						} else if case .function_invocation(let invocation) = token {
 							var functionArguments = [GBFunctionArgument]()
 							
@@ -407,7 +423,16 @@ class GBInterpreter {
 							
 							storage.deleteScope(scope)
 						} else if case .plain_text(let key) = token {
-							if storage.variableExists(key) {
+							if storage.structs[key] != nil {
+								var namespaces = key.components(separatedBy: "::")
+								var name = namespaces.removeLast()
+								
+								namespaces = namespaces.map { "[\($0)]" }
+								
+								name = namespaces.joined(separator: "") + name
+								
+								arguments.append(.string(name))
+							} else if storage.variableExists(key) {
 								let variable = storage[key]
 								
 								if variable.type == .string {
@@ -440,6 +465,22 @@ class GBInterpreter {
 							}
 						} else {
 							return (nil, 1, .init(type: .interpreting, description: "Invalid number of arguments for namespace.", line: lineNumber, word: tokenNumber))
+						}
+					} else if case .structure(let name, let codeBlock) = task {
+						if name == nil {
+							if case .plain_text(let value) = token {
+								task = .structure(value, nil)
+							} else {
+								return (nil, 1, .init(type: .interpreting, description: "Invalid token. Expected plain text.", line: lineNumber, word: tokenNumber))
+							}
+						} else if codeBlock == nil {
+							if case .code_block(let block) = token {
+								task = .structure(name, block)
+							} else {
+								return (nil, 1, .init(type: .interpreting, description: "Invalid token. Expected code block.", line: lineNumber, word: tokenNumber))
+							}
+						} else {
+							return (nil, 1, .init(type: .interpreting, description: "Invalid number of arguments for structure.", line: lineNumber, word: tokenNumber))
 						}
 					} else if case .if_statement(let condition, let codeBlock) = task {
 						if condition == nil {
@@ -526,6 +567,20 @@ class GBInterpreter {
 					if let error = error {
 						return (nil, exitCode, error)
 					}
+				}
+				
+				task = nil
+				lineNumber += 1
+			} else if case .structure(let name, let block) = task {
+				guard let name = name, let block = block else {
+					lineNumber += 1
+					continue
+				}
+				
+				if namespace == "" {
+					storage.structs[name] = block
+				} else {
+					storage.structs[namespace + "::" + name] = block
 				}
 				
 				task = nil

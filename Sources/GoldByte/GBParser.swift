@@ -147,6 +147,11 @@ class GBParser {
 							blocks.append(.IF)
 							codeBlocks.append([])
 							expectsCodeBlock = true
+						} else if word == "STRUCT" && core.configuration.flags.contains(.allowMultiline) {
+							currentLine.append(.struct_keyword)
+							blocks.append(.STRUCT)
+							codeBlocks.append([])
+							expectsCodeBlock = true
 						} else if word == "NAMESPACE" && core.configuration.flags.contains(.allowMultiline) {
 							currentLine.append(.namespace_keyword)
 							blocks.append(.NAMESPACE)
@@ -243,6 +248,21 @@ class GBParser {
 							expectsCodeBlock = blocks.count != 0
 						} else {
 							return (nil, .init(type: .parsing, description: "Ending while construction before starting one.", line: lineNumber, word: wordNumber))
+						}
+					} else if word == "/STRUCT" {
+						if blocks.last == .STRUCT {
+							if codeBlocks.count == 1 {
+								currentLine.append(.code_block(codeBlocks[0]))
+							} else {
+								codeBlocks[codeBlocks.endIndex - 2].append([.code_block(codeBlocks.last!)])
+							}
+							
+							blocks.removeLast()
+							codeBlocks.removeLast()
+							
+							expectsCodeBlock = blocks.count != 0
+						} else {
+							return (nil, .init(type: .parsing, description: "Ending structure before starting one.", line: lineNumber, word: wordNumber))
 						}
 					} else if word == "/FN" {
 						if blocks.last == .FUNCTION {
@@ -549,13 +569,7 @@ class GBParser {
 					var firstIsKeyword = false
 					
 					switch currentLine.first! {
-						case .if_keyword:
-							firstIsKeyword = true
-						case .function_keyword:
-							firstIsKeyword = true
-						case .while_keyword:
-							firstIsKeyword = true
-						case .namespace_keyword:
+						case .if_keyword, .function_keyword, .while_keyword, .namespace_keyword, .struct_keyword:
 							firstIsKeyword = true
 						default:
 							firstIsKeyword = false
