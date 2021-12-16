@@ -87,7 +87,7 @@ class GBParser {
 			if element.isEmpty {
 				return "//"
 			} else {
-				return element
+				return element.trimmingCharacters(in: .whitespaces)
 			}
 		}
 		
