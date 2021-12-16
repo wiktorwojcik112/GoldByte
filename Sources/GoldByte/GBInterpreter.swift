@@ -21,6 +21,7 @@ class GBInterpreter {
 	enum GBTask {
 		case macro_execution(String)
 		case variable_assignment(String?, GBStorage.ValueType?)
+		case constant_assignment(String?, GBStorage.ValueType?)
 		case if_statement(GBLogicalExpression?, [[GBToken]]?)
 		case while_statement(GBLogicalExpression?, [[GBToken]]?)
 		case function_definition(GBFunctionDefinition?, [[GBToken]]?)
@@ -105,6 +106,8 @@ class GBInterpreter {
 							task = .macro_execution(key)
 						case .variable_keyword:
 							task = .variable_assignment(nil, nil)
+						case .constant_keyword:
+							task = .constant_assignment(nil, nil)
 						case .if_keyword:
 							task = .if_statement(nil, nil)
 						case .struct_keyword:
@@ -278,6 +281,126 @@ class GBInterpreter {
 							}
 						} else {
 							return (nil, 1, .init(type: .interpreting, description: "Too many values for variable assignment.", line: lineNumber, word: tokenNumber))
+						}
+					} else if case .constant_assignment(let _, let _) = task {
+						if tokenNumber == 1 {
+							if case .variable_type(let type) = token {
+								task = .constant_assignment(nil, type)
+							}
+						} else if tokenNumber == 2 {
+							if case .plain_text(let value) = token {
+								key = value
+							} else {
+								return (nil, 1, .init(type: .interpreting, description: "Invalid token.", line: lineNumber, word: tokenNumber))
+							}
+						} else if tokenNumber == 3 {
+							if case .constant_assignment(let _, let type) = task {
+								if type == nil {
+									return (nil, 1, .init(type: .interpreting, description: "Can't recognize type.", line: lineNumber, word: tokenNumber))
+								}
+							}
+							
+							if case .string(let value) = token {
+								if case .constant_assignment(let _, let type) = task {
+									if type != .string {
+										return (nil, 1, .init(type: .interpreting, description: "Expected \"\(type!.rawValue)\", got \"string\"", line: lineNumber, word: tokenNumber))
+									}
+									
+									task = .constant_assignment(value.prepare(withStorage: storage), type)
+								}
+							} else if case .equation(let equation) = token {
+								if case .constant_assignment(let _, let type) = task {
+									if type != .number {
+										return (nil, 1, .init(type: .interpreting, description: "Expected \"\(type!.rawValue)\", got \"number\"", line: lineNumber, word: tokenNumber))
+									}
+									
+									let (result, error) = equation.evaluate()
+									
+									if let error = error {
+										return (nil, 1, error)
+									}
+									
+									task = .constant_assignment(String(result!), type)
+								}
+							} else if case .number(let value) = token {
+								if case .constant_assignment(let _, let type) = task {
+									if type != .number {
+										return (nil, 1, .init(type: .interpreting, description: "Expected \"\(type!.rawValue)\", got \"number\"", line: lineNumber, word: tokenNumber))
+									}
+									
+									task = .variable_assignment(String(value), type)
+								}
+							} else if case .logical_expression(let expression) = token {
+								if case .constant_assignment(let _, let type) = task {
+									if type != .bool {
+										return (nil, 1, .init(type: .interpreting, description: "Expected \"\(type!.rawValue)\", got \"bool\"", line: lineNumber, word: tokenNumber))
+									}
+									
+									let (result, error) = expression.evaluate()
+									
+									if let error = error {
+										return (nil, 1, error)
+									}
+									
+									task = .variable_assignment(String(result!), type)
+								}
+							} else if case .bool(let value) = token {
+								if case .constant_assignment(let _, let type) = task {
+									if type != .bool {
+										return (nil, 1, .init(type: .interpreting, description: "Expected \"\(type!.rawValue)\", got \"bool\"", line: lineNumber, word: tokenNumber))
+									}
+									
+									task = .variable_assignment(String(value), type)
+								}
+							} else if case .casted(let _, let castingType) = token {
+								if case .constant_assignment(let _, let type) = task {
+									let (value, error) = token.cast(withStorage: storage)
+									
+									if let error = error {
+										return (nil, 1, error)
+									}
+									
+									if type?.rawValue != castingType.rawValue {
+										return (nil, 1, .init(type: .interpreting, description: "Expected \"\(type!.rawValue)\", got \"\(castingType)\"", line: lineNumber, word: tokenNumber))
+									}
+									
+									task = .constant_assignment(value!.getValue(), type)
+								}
+							} else if case .plain_text(let key) = token {
+								var namespaces = key.components(separatedBy: "::")
+								var key = namespaces.removeLast()
+								
+								if namespaces.count != 0 && namespaces[0] == "self" {
+									namespaces.removeFirst()
+									namespaces.insert(contentsOf: namespace.components(separatedBy: "::"), at: 0)
+								}
+								
+								key = namespaces.joined(separator: "::") + key
+								
+								if storage.variableExists(key) {
+									let variable = storage[key]
+									
+									if case .variable_assignment(let _, let type) = task {
+										if type != variable.type {
+											return (nil, 1, .init(type: .interpreting, description: "Expected \"\(type!.rawValue)\", got \"\(variable.type)\"", line: lineNumber, word: tokenNumber))
+										}
+										
+										task = .constant_assignment(String(variable.value), type)
+									}
+								} else {
+									return (nil, 1, .init(type: .interpreting, description: "Uknown token.", line: lineNumber, word: tokenNumber))
+								}
+							} else {
+								return (nil, 1, .init(type: .interpreting, description: "Unknown token.", line: lineNumber, word: tokenNumber))
+							}
+						} else if tokenNumber == 4 {
+							if case .bool(let value) = token {
+								globalVariable = value
+							} else {
+								return (nil, 1, .init(type: .interpreting, description: "Invalid token: \(token).", line: lineNumber, word: tokenNumber))
+							}
+						} else {
+							return (nil, 1, .init(type: .interpreting, description: "Too many values for constant assignment.", line: lineNumber, word: tokenNumber))
 						}
 					} else if case .return_value(let value) = task {
 						if let value = value {
@@ -554,9 +677,28 @@ class GBInterpreter {
 				}
 				
 				if globalVariable {
-					storage[keyWithNamespace] = .init(value: value, type: type, scope: .global)
+					storage[keyWithNamespace] = .init(value: value, type: type, scope: .global, isConstant: false)
 				} else {
-					storage[keyWithNamespace] = .init(value: value, type: type, scope: currentScope)
+					storage[keyWithNamespace] = .init(value: value, type: type, scope: currentScope, isConstant: false)
+				}
+				
+				globalVariable = false
+				task = nil
+			} else if case .constant_assignment(let value, let type) = task {
+				guard let key = key, let value = value, let type = type else {
+					return (nil, 1, .init(type: .interpreting, description: "Not enough arguments for variable assignment.", line: lineNumber, word: 0))
+				}
+				
+				var keyWithNamespace = key
+				
+				if namespace != "" {
+					keyWithNamespace = namespace + "::" + key
+				}
+				
+				if globalVariable {
+					storage[keyWithNamespace] = .init(value: value, type: type, scope: .global, isConstant: true)
+				} else {
+					storage[keyWithNamespace] = .init(value: value, type: type, scope: currentScope, isConstant: true)
 				}
 				
 				globalVariable = false

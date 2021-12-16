@@ -67,7 +67,7 @@ class GBStorage {
 		let function = functions[name]!
 
 		for (n, argument) in arguments.enumerated() {
-			self[function.definition.arguments[n].name] = .init(value: argument.type == .string ? argument.value.replaceKeywordCharacters() : argument.value, type: argument.type, scope: scope)
+			self[function.definition.arguments[n].name] = .init(value: argument.type == .string ? argument.value.replaceKeywordCharacters() : argument.value, type: argument.type, scope: scope, isConstant: true)
 		}
 	}
 	
@@ -130,7 +130,11 @@ class GBStorage {
 
 			if let variable = variables[key] {
 				if variable.type == newValue.type {
-					variables[key] = newValue
+					if !variable.isConstant {
+						variables[key] = newValue
+					} else {
+						errorHandler.handle(.init(type: .type, description: "\"\(variable.type)\" is a constant. New value will be ignored, but undefined actions may take place."))
+					}
 				} else {
 					errorHandler.handle(.init(type: .type, description: "Expected \"\(variable.type)\", got \"\(newValue.type)\"."))
 				}
@@ -147,7 +151,7 @@ class GBStorage {
 			
 			key = namespaces.joined(separator: "") + key
 			
-			return variables[key] ?? GBVariable(value: "", type: .null, scope: .global)
+			return variables[key] ?? GBVariable(value: "", type: .null, scope: .global, isConstant: true)
 		}
 	}
 	
@@ -172,6 +176,7 @@ struct GBVariable {
 	var value: String
 	var type: GBStorage.ValueType
 	var scope: GBInterpreter.Scope
+	var isConstant: Bool = false
 }
 
 

@@ -28,7 +28,7 @@ class GBShell {
 	init() {
 		core = GBCore(configuration: GBCore.defaultConfiguration, macros: nil)
 		core.addMacros(getMacros(withStorage: core.storage))
-		core.storage["PATH"] = .init(value: "/Users", type: .url, scope: .global)
+		core.storage["PATH"] = .init(value: ("~" as NSString).expandingTildeInPath as String, type: .url, scope: .global, isConstant: false)
 		core.configuration.flags = []
 		core.configuration.console = ShellConsole()
 	}
@@ -220,7 +220,7 @@ extension GBShell {
 					return .init(type: .macro, description: "Path \(url.absoluteString) doesn't exist.")
 				}
 				
-				storage["PATH"] = .init(value: url.absoluteString, type: .url, scope: .global)
+				storage["PATH"] = .init(value: url.absoluteString, type: .url, scope: .global, isConstant: false)
 				
 				return nil
 			}

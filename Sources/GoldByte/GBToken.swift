@@ -34,6 +34,7 @@ enum GBToken {
 	case exit_keyword
 	case namespace_keyword
 	case struct_keyword
+	case constant_keyword
 	
 	enum ValueType: String, CaseIterable {
 		case string = "STRING"

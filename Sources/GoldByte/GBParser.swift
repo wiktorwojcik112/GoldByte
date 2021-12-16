@@ -142,6 +142,8 @@ class GBParser {
 							currentLine.append(.return_keyword)
 						} else if word == "VAR" {
 							currentLine.append(.variable_keyword)
+						} else if word == "CONST" {
+							currentLine.append(.constant_keyword)
 						} else if word == "IF" && core.configuration.flags.contains(.allowMultiline) && expectsCodeBlock {
 							currentLine.append(.if_keyword)
 							blocks.append(.IF)
