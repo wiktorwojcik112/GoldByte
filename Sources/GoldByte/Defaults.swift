@@ -42,11 +42,19 @@ extension GBCore {
 				} else {
 					return .init(type: .macro, description: "Expected value of type STRING.", line: line, word: 2)
 				}
-
-				let (_, _, error) = self.interpreter.interpret(structureCode, isInsideCodeBlock: true, namespace: structureNamespace + instanceName)
+				
+				if structureNamespace == "" {
+					let (_, _, error) = self.interpreter.interpret(structureCode, isInsideCodeBlock: true, namespace: instanceName)
 					
-				if let error = error {
-					return error
+					if let error = error {
+						return error
+					}
+				} else {
+					let (_, _, error) = self.interpreter.interpret(structureCode, isInsideCodeBlock: true, namespace: structureNamespace + "::" + instanceName)
+					
+					if let error = error {
+						return error
+					}
 				}
 				
 				return nil

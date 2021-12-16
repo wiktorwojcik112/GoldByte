@@ -45,23 +45,13 @@ class GBInterpreter {
 	
 	func interpret(_ code: [[GBToken]], scope: Scope = .global, isInsideCodeBlock: Bool = false, returnType: GBStorage.ValueType? = nil, continueAt: Int = 0, namespace: String? = nil, isFunction: Bool = false) -> (GBValue?, Int, GBError?) {
 		let namespace = namespace ?? ""
-		var lineNumber = continueAt
 		let currentScope = scope
 		var task: GBTask? = nil
 		
 		var globalVariable = false
-		
-		while lineNumber < code.endIndex {
-			let line = code[lineNumber]
-			
+		for (lineNumber, line) in code.enumerated() {
 			var arguments: [GBValue] = []
 			var key: String? = nil
-			
-			if let breakpoints = debugger?.breakpoints {
-				if breakpoints.contains(lineNumber) && continueAt != lineNumber {
-					return (nil, lineNumber, nil)
-				}
-			}
 			
 			for (tokenNumber, token) in line.enumerated() {
 				if tokenNumber == 0 {
@@ -76,7 +66,7 @@ class GBInterpreter {
 							task = .function_definition(nil, nil)
 						case .function_invocation(let invocation):
 							var arguments = [GBFunctionArgument]()
-
+							
 							for argument in invocation.arguments {
 								if argument.type == .variable {
 									if storage.variableExists(argument.value) {
@@ -89,7 +79,7 @@ class GBInterpreter {
 									arguments.append(argument)
 								}
 							}
-							
+
 							if line.count == 1 {
 								let (function, type, error) = storage.getFunction(invocation.name, arguments: arguments, line: lineNumber)
 								
@@ -101,15 +91,13 @@ class GBInterpreter {
 								
 								storage.generateVariables(forFunction: invocation.name, withArguments: arguments, withScope: scope)
 								
-								let (_, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type, isFunction: true)
+								let (_, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type, namespace: invocation.name.components(separatedBy: "::").dropLast().joined(separator: "::") + "::", isFunction: true)
 								
 								if let error = functionError {
 									return (nil, 1, error)
 								}
 								
 								storage.deleteScope(scope)
-								
-								lineNumber += 1
 							} else {
 								return (nil, 1, .init(type: .interpreting, description: "Line, where function is 1st word, can't contain more instruction", line: lineNumber, word: tokenNumber))
 							}
@@ -256,6 +244,16 @@ class GBInterpreter {
 									task = .variable_assignment(value!.getValue(), type)
 								}
 							} else if case .plain_text(let key) = token {
+								var namespaces = key.components(separatedBy: "::")
+								var key = namespaces.removeLast()
+								
+								if namespaces.count != 0 && namespaces[0] == "self" {
+									namespaces.removeFirst()
+									namespaces.insert(contentsOf: namespace.components(separatedBy: "::"), at: 0)
+								}
+								
+								key = namespaces.joined(separator: "::") + key
+								
 								if storage.variableExists(key) {
 									let variable = storage[key]
 									
@@ -304,6 +302,16 @@ class GBInterpreter {
 								
 								task = .return_value(.number(value))
 							} else if case .plain_text(let key) = token {
+								var namespaces = key.components(separatedBy: "::")
+								var key = namespaces.removeLast()
+								
+								if namespaces.count != 0 && namespaces[0] == "self" {
+									namespaces.removeFirst()
+									namespaces.insert(contentsOf: namespace.components(separatedBy: "::"), at: 0)
+								}
+								
+								key = namespaces.joined(separator: "::") + key
+								
 								if storage.variableExists(key) {
 									let variable = storage[key]
 									
@@ -378,9 +386,12 @@ class GBInterpreter {
 							var namespaces = value.components(separatedBy: "::")
 							var name = namespaces.removeLast()
 							
-							namespaces = namespaces.map { "[\($0)]" }
+							if namespaces.count != 0 && namespaces[0] == "self" {
+								namespaces.removeFirst()
+								namespaces.insert(contentsOf: namespace.components(separatedBy: "::"), at: 0)
+							}
 							
-							name = namespaces.joined(separator: "") + name
+							name = namespaces.joined(separator: "::") + "::" + name
 							
 							arguments.append(.pointer(name))
 						} else if case .function_invocation(let invocation) = token {
@@ -408,8 +419,8 @@ class GBInterpreter {
 							storage.generateVariables(forFunction: invocation.name, withArguments: functionArguments, withScope: scope)
 							
 							let scope = GBStorage.Scope(UUID())
-							
-							let (returnValue, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type, isFunction: true)
+
+							let (returnValue, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type, namespace: invocation.name.components(separatedBy: "::").dropLast().joined(separator: "::") + "::", isFunction: true)
 							
 							if let error = functionError {
 								return (nil, 1, error)
@@ -423,15 +434,18 @@ class GBInterpreter {
 							
 							storage.deleteScope(scope)
 						} else if case .plain_text(let key) = token {
+							var namespaces = key.components(separatedBy: "::")
+							var key = namespaces.removeLast()
+							
+							if namespaces.count != 0 && namespaces[0] == "self" {
+								namespaces.removeFirst()
+								namespaces.insert(contentsOf: namespace.components(separatedBy: "::"), at: 0)
+							}
+							
+							key = namespaces.joined(separator: "::") + key
+							
 							if storage.structs[key] != nil {
-								var namespaces = key.components(separatedBy: "::")
-								var name = namespaces.removeLast()
-								
-								namespaces = namespaces.map { "[\($0)]" }
-								
-								name = namespaces.joined(separator: "") + name
-								
-								arguments.append(.string(name))
+								arguments.append(.string(key))
 							} else if storage.variableExists(key) {
 								let variable = storage[key]
 								
@@ -528,7 +542,6 @@ class GBInterpreter {
 				}
 				
 				task = nil
-				lineNumber += 1
 			} else if case .variable_assignment(let value, let type) = task {
 				guard let key = key, let value = value, let type = type else {
 					return (nil, 1, .init(type: .interpreting, description: "Not enough arguments for variable assignment.", line: lineNumber, word: 0))
@@ -548,10 +561,8 @@ class GBInterpreter {
 				
 				globalVariable = false
 				task = nil
-				lineNumber += 1
 			} else if case .namespace(let name, let block) = task {
 				guard let name = name, let block = block else {
-					lineNumber += 1
 					continue
 				}
 				
@@ -570,10 +581,8 @@ class GBInterpreter {
 				}
 				
 				task = nil
-				lineNumber += 1
 			} else if case .structure(let name, let block) = task {
 				guard let name = name, let block = block else {
-					lineNumber += 1
 					continue
 				}
 				
@@ -584,10 +593,8 @@ class GBInterpreter {
 				}
 				
 				task = nil
-				lineNumber += 1
 			} else if case .if_statement(let condition, let block) = task {
 				guard let condition = condition, let block = block else {
-					lineNumber += 1
 					continue
 				}
 				
@@ -612,10 +619,8 @@ class GBInterpreter {
 				}
 				
 				task = nil
-				lineNumber += 1
 			} else if case .while_statement(let condition, let block) = task {
 				guard let condition = condition, let block = block else {
-					lineNumber += 1
 					continue
 				}
 				
@@ -646,10 +651,8 @@ class GBInterpreter {
 				}
 				
 				task = nil
-				lineNumber += 1
 			} else if case .function_definition(let definition, let block) = task {
 				guard let definition = definition, let block = block else {
-					lineNumber += 1
 					continue
 				}
 				
@@ -662,7 +665,6 @@ class GBInterpreter {
 				storage.saveFunction(definitionWithNamespace, codeBlock: block)
 				
 				task = nil
-				lineNumber += 1
 			} else if case .return_value(let value) = task {
 				if value == nil && returnType == nil {
 					return (nil, 0, nil)
