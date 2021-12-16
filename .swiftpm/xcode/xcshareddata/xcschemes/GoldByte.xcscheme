@@ -103,7 +103,7 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "~/Developer/main"
-            isEnabled = "NO">
+            isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
    </LaunchAction>

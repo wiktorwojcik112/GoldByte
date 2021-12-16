@@ -35,10 +35,14 @@ extension Foundation.Bundle {
 	}()
 	
 	static var currentModule: Bundle = {
-		#if os(macOS)
-		return .macModule
-		#elseif os(Linux)
-		return .linuxModule!
+		#if DEBUG
+			#if os(macOS)
+				return .macModule
+			#elseif os(Linux)
+				return .linuxModule!
+			#endif
+		#else
+			return .module
 		#endif
 	}()
 }
