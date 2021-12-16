@@ -29,7 +29,7 @@ class GBShell {
 		core = GBCore(configuration: GBCore.defaultConfiguration, macros: nil)
 		core.addMacros(getMacros(withStorage: core.storage))
 		core.storage["PATH"] = .init(value: ("~" as NSString).expandingTildeInPath as String, type: .url, scope: .global, isConstant: false)
-		core.configuration.flags = []
+		core.configuration.flags = [.noMain]
 		core.configuration.console = ShellConsole()
 	}
 	

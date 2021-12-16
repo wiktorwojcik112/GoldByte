@@ -55,6 +55,7 @@ class GBCore {
 		case allowLibraries
 		case allowMultiline
 		case showExitMessage
+		case noMain
 	}
 	
 	struct Configuration {
@@ -137,33 +138,35 @@ class GBCore {
 			
 			return
 		}
-		let (code, _, functionError) = storage.getFunction("main", arguments: [], line: 0)
 		
-		if let functionError = functionError {
-			errorHandler.handle(functionError)
+		if !configuration.flags.contains(.noMain) {
+			let (code, _, functionError) = storage.getFunction("main", arguments: [], line: 0)
 			
-			if configuration.flags.contains(.showExitMessage) {
-				print("\nProgram exited with exit code: 1\n")
+			if let functionError = functionError {
+				errorHandler.handle(functionError)
+				
+				if configuration.flags.contains(.showExitMessage) {
+					print("\nProgram exited with exit code: 1\n")
+				}
+				
+				return
 			}
 			
-			return
-		}
-		
-		let (_, exitCode, error) = interpreter.interpret(code!, isInsideCodeBlock: true, returnType: .number)
-		
-		if let error = error {
-			errorHandler.handle(error)
+			let (_, exitCode, error) = interpreter.interpret(code!, isInsideCodeBlock: true, returnType: .number)
 			
-			if configuration.flags.contains(.showExitMessage) {
-				print("\nProgram exited with exit code: \(exitCode)\n")
+			if let error = error {
+				errorHandler.handle(error)
+				
+				if configuration.flags.contains(.showExitMessage) {
+					print("\nProgram exited with exit code: \(exitCode)\n")
+				}
+				
+				return
 			}
-			
-			return
 		}
-		
 		
 		if configuration.flags.contains(.showExitMessage) {
-			print("\nProgram exited with exit code: \(exitCode)\n")
+			print("\nProgram exited with exit code: 0\n")
 		}
 	}
 }
