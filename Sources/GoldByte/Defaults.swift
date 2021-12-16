@@ -10,7 +10,7 @@ import Foundation
 extension GBCore {
 	func getMacros(withStorage storage: GBStorage) -> [String: GBMacroAction] {
 		GBStorage.buildMacros {
-			GBMacro("NEW") { arguments, line in
+			GBMacro("NEW") { arguments, line, _ in
 				if arguments.count != 2 {
 					return .init(type: .macro, description: "Expected 2 arguments, got \(arguments.count).", line: line, word: 0)
 				}
@@ -60,7 +60,7 @@ extension GBCore {
 				return nil
 			}
 			
-			GBMacro("MODULO") { arguments, line in
+			GBMacro("MODULO") { arguments, line, _ in
 				if arguments.count != 3 {
 					return .init(type: .macro, description: "Expected 3 arguments, got \(arguments.count).", line: line, word: 0)
 				}
@@ -100,7 +100,7 @@ extension GBCore {
 				return nil
 			}
 			
-			GBMacro("DYN_VAR_MAKE") { arguments, line in
+			GBMacro("DYN_VAR_MAKE") { arguments, line, _ in
 				if arguments.count != 3 {
 					return .init(type: .macro, description: "Expected 3 arguments, got \(arguments.count).", line: line, word: 0)
 				}
@@ -140,7 +140,7 @@ extension GBCore {
 				return nil
 			}
 			
-			GBMacro("DYN_VAR_READ") { arguments, line in
+			GBMacro("DYN_VAR_READ") { arguments, line, _ in
 				if arguments.count != 3 {
 					return .init(type: .macro, description: "Expected 3 arguments, got \(arguments.count).", line: line, word: 0)
 				}
@@ -190,7 +190,7 @@ extension GBCore {
 				return nil
 			}
 			
-			GBMacro("ENABLE") { arguments, line in
+			GBMacro("ENABLE") { arguments, line, _ in
 				if arguments.count == 1 {
 					if case .string(let value) = arguments[0] {
 						storage.disabledMacros.remove(value)
@@ -204,7 +204,7 @@ extension GBCore {
 				return nil
 			}
 			
-			GBMacro("DISABLE") { arguments, line in
+			GBMacro("DISABLE") { arguments, line, _ in
 				if arguments.count == 1 {
 					if case .string(let value) = arguments[0] {
 						storage.disabledMacros.insert(value)
@@ -218,7 +218,7 @@ extension GBCore {
 				return nil
 			}
 			
-			GBMacro("USE") { arguments, line in
+			GBMacro("USE") { arguments, line, _ in
 				if arguments.count != 1 {
 					return .init(type: .macro, description: "Expected 1 argument, got \(arguments.count).", line: line, word: 0)
 				}
@@ -296,7 +296,7 @@ extension GBCore {
 				}
 			}
 			
-			GBMacro("FREE") { arguments, line in
+			GBMacro("FREE") { arguments, line, _ in
 				if arguments.count != 1 {
 					return .init(type: .macro, description: "Expect 1 argument, got \(arguments.count).", line: line, word: 0)
 				}
@@ -340,7 +340,7 @@ extension GBCore {
 				return nil
 			}
 			
-			GBMacro("RAND") { arguments, line in
+			GBMacro("RAND") { arguments, line, _ in
 				if arguments.count == 3 {
 					var variable = ""
 					var min: Float = 0
@@ -386,7 +386,7 @@ extension GBCore {
 				return nil
 			}
 			
-			GBMacro("ERROR") { arguments, line in
+			GBMacro("ERROR") { arguments, line, _ in
 				if arguments.count == 1 {
 					if case .string(let value) = arguments[0] {
 						return .init(type: .macro, description: value, line: line, word: 0)
@@ -398,7 +398,7 @@ extension GBCore {
 				}
 			}
 			
-			GBMacro("ASSIGN") { arguments, line in
+			GBMacro("ASSIGN") { arguments, line, namespace in
 				var modifiedVariable = ""
 				
 				var typeOfNewValue: GBStorage.ValueType = .null
@@ -409,6 +409,22 @@ extension GBCore {
 				}
 				
 				if case .pointer(let key) = modifiedVariableToken {
+					var namespaces = key.components(separatedBy: "::")
+					var key = namespaces.removeLast()
+					
+					if namespaces.count != 0 && namespaces[0] == "self" {
+						namespaces.removeFirst()
+						namespaces.insert(contentsOf: namespace.components(separatedBy: "::"), at: 0)
+					}
+					
+					var seperator = namespaces.joined(separator: "::").isEmpty ? "" : "::"
+					
+					if namespaces.joined(separator: "::").hasSuffix("::") {
+						seperator = ""
+					}
+					
+					key = namespaces.joined(separator: "::") + seperator + key
+					
 					if storage.variableExists(key) {
 						modifiedVariable = key
 					} else {
@@ -446,7 +462,7 @@ extension GBCore {
 				return nil
 			}
 			
-			GBMacro("PRINT") { arguments, line in
+			GBMacro("PRINT") { arguments, line, _ in
 				if arguments.count == 1 {
 					if case .string(let text) = arguments[0] {
 						self.console.text(text)
@@ -464,7 +480,7 @@ extension GBCore {
 				return nil
 			}
 			
-			GBMacro("PRINTLN") { arguments, line in
+			GBMacro("PRINTLN") { arguments, line, _ in
 				if arguments.count == 1 {
 					if case .string(let text) = arguments[0] {
 						self.console.text(text + "\n")
@@ -482,7 +498,7 @@ extension GBCore {
 				return nil
 			}
 			
-			GBMacro("INPUT") { arguments, line in
+			GBMacro("INPUT") { arguments, line, _ in
 				if arguments.count == 2 || arguments.count == 3 {
 					var type: GBStorage.ValueType = .null
 
@@ -538,10 +554,6 @@ extension GBCore {
 			}
 		}
 	}
-}
-
-func printLine(line: UInt = #line) {
-	print(line)
 }
 
 class DefaultConsole: GBConsole {

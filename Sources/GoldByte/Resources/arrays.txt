@@ -1,20 +1,27 @@
-NAMESPACE Arrays
-	FN insert(value:ANY,index:NUMBER,name:STRING):VOID
+STRUCT Array
+	VAR STRING name "undefined"
+
+	FN init(name:STRING):VOID
+		ASSIGN $self::name name
+	/FN
+
+
+	FN insert(value:ANY,index:NUMBER):VOID
 		ENABLE "DYN_VAR_MAKE"
 		ENABLE "DYN_VAR_READ"
 
-		VAR STRING arrayCell "%(name) %(index)"
+		VAR STRING arrayCell "%(self::name) %(index)"
 		DYN_VAR_MAKE STRING arrayCell value
 		
 		DISABLE "DYN_VAR_MAKE"
 		DISABLE "DYN_VAR_READ"
 	/FN
 	
-	FN read(index:NUMBER,name:STRING):STRING
+	FN read(index:NUMBER):STRING
 		ENABLE "DYN_VAR_MAKE"
 		ENABLE "DYN_VAR_READ"
 		
-		VAR STRING arrayCell "%(name) %(index)"
+		VAR STRING arrayCell "%(self::name) %(index)"
 		VAR STRING result ""
 		DYN_VAR_READ STRING arrayCell $result
 		
@@ -23,4 +30,4 @@ NAMESPACE Arrays
 		
 		RETURN result
 	/FN
-/NAMESPACE
+/STRUCT

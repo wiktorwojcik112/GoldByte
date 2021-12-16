@@ -61,7 +61,7 @@ if CommandLine.arguments.count == 1 {
 extension GBCore {
 	func getMacSpecificMacros(withStorage storage: GBStorage) -> [String: GBMacroAction] {
 		return GBStorage.buildMacros {
-			GBMacro("SHELL") { arguments, line in
+			GBMacro("SHELL") { arguments, line, _ in
 				if arguments.count == 1 {
 					if case .string(let script) = arguments[0] {
 						var output: GBError? = nil
@@ -81,7 +81,7 @@ extension GBCore {
 						
 						let script = script.trimmingCharacters(in: .whitespacesAndNewlines)
 						
-						var arguments = script.prepare(withStorage: storage).components(separatedBy: " ")
+						let arguments = script.prepare(withStorage: storage, inNamespace: "").components(separatedBy: " ")
 						
 						process.arguments = arguments
 						

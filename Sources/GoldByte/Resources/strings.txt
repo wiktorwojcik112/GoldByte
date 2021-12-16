@@ -1,5 +1,5 @@
 NAMESPACE Strings
-	FN concat(left:STRING,right:STRING):STRING
-		RETURN "%(left) %(right)"
+	FN concat(left:ANY,right:ANY):STRING
+		RETURN "%(left|right)"
 	/FN
 /NAMESPACE

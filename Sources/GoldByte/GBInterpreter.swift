@@ -186,7 +186,7 @@ class GBInterpreter {
 										return (nil, 1, .init(type: .interpreting, description: "Expected \"\(type!.rawValue)\", got \"string\"", line: lineNumber, word: tokenNumber))
 									}
 									
-									task = .variable_assignment(value.prepare(withStorage: storage), type)
+									task = .variable_assignment(value.prepare(withStorage: storage, inNamespace: namespace), type)
 								}
 							} else if case .equation(let equation) = token {
 								if case .variable_assignment(let _, let type) = task {
@@ -255,7 +255,9 @@ class GBInterpreter {
 									namespaces.insert(contentsOf: namespace.components(separatedBy: "::"), at: 0)
 								}
 								
-								key = namespaces.joined(separator: "::") + key
+								let seperator = namespaces.joined(separator: "::").isEmpty ? "" : "::"
+								
+								key = namespaces.joined(separator: "::") + seperator + key
 								
 								if storage.variableExists(key) {
 									let variable = storage[key]
@@ -306,7 +308,7 @@ class GBInterpreter {
 										return (nil, 1, .init(type: .interpreting, description: "Expected \"\(type!.rawValue)\", got \"string\"", line: lineNumber, word: tokenNumber))
 									}
 									
-									task = .constant_assignment(value.prepare(withStorage: storage), type)
+									task = .constant_assignment(value.prepare(withStorage: storage, inNamespace: namespace), type)
 								}
 							} else if case .equation(let equation) = token {
 								if case .constant_assignment(let _, let type) = task {
@@ -375,7 +377,9 @@ class GBInterpreter {
 									namespaces.insert(contentsOf: namespace.components(separatedBy: "::"), at: 0)
 								}
 								
-								key = namespaces.joined(separator: "::") + key
+								let seperator = namespaces.joined(separator: "::").isEmpty ? "" : "::"
+								
+								key = namespaces.joined(separator: "::") + seperator + key
 								
 								if storage.variableExists(key) {
 									let variable = storage[key]
@@ -411,7 +415,7 @@ class GBInterpreter {
 									return (nil, 1, .init(type: .interpreting, description: "Return type of function (\(returnType?.rawValue ?? "VOID")) and returned value (STRING) don't match.", line: lineNumber, word: tokenNumber))
 								}
 								
-								task = .return_value(.string(value.replacingOccurrences(of: "\"", with: "").prepare(withStorage: storage)))
+								task = .return_value(.string(value.replacingOccurrences(of: "\"", with: "").prepare(withStorage: storage, inNamespace: namespace)))
 							} else if case .url(let url) = token {
 								if returnType?.rawValue != GBStorage.ValueType.url.rawValue {
 									return (nil, 1, .init(type: .interpreting, description: "Return type of function (\(returnType?.rawValue ?? "VOID")) and returned value (URL) don't match.", line: lineNumber, word: tokenNumber))
@@ -433,7 +437,9 @@ class GBInterpreter {
 									namespaces.insert(contentsOf: namespace.components(separatedBy: "::"), at: 0)
 								}
 								
-								key = namespaces.joined(separator: "::") + key
+								let seperator = namespaces.joined(separator: "::").isEmpty ? "" : "::"
+								
+								key = namespaces.joined(separator: "::") + seperator + key
 								
 								if storage.variableExists(key) {
 									let variable = storage[key]
@@ -478,7 +484,7 @@ class GBInterpreter {
 						}
 					} else if case .macro_execution(let _) = task {
 						if case .string(let value) = token {
-							arguments.append(.string(value.replacingOccurrences(of: "\"", with: "").prepare(withStorage: storage)))
+							arguments.append(.string(value.prepare(withStorage: storage, inNamespace: namespace)))
 						} else if case .type(let type) = token {
 							arguments.append(.string(type.rawValue))
 						} else if case .url(let url) = token {
@@ -514,7 +520,13 @@ class GBInterpreter {
 								namespaces.insert(contentsOf: namespace.components(separatedBy: "::"), at: 0)
 							}
 							
-							name = namespaces.joined(separator: "::") + "::" + name
+							var seperator = ""
+							
+							if !namespaces.joined(separator: "::").isEmpty {
+								seperator = "::"
+							}
+							
+							name = namespaces.joined(separator: "::") + seperator + name
 							
 							arguments.append(.pointer(name))
 						} else if case .function_invocation(let invocation) = token {
@@ -565,7 +577,13 @@ class GBInterpreter {
 								namespaces.insert(contentsOf: namespace.components(separatedBy: "::"), at: 0)
 							}
 							
-							key = namespaces.joined(separator: "::") + key
+							var seperator = namespaces.joined(separator: "::").isEmpty ? "" : "::"
+							
+							if namespaces.joined(separator: "::").hasSuffix("::") {
+								seperator = ""
+							}
+							
+							key = namespaces.joined(separator: "::") + seperator + key
 							
 							if storage.structs[key] != nil {
 								arguments.append(.string(key))
@@ -656,7 +674,7 @@ class GBInterpreter {
 			}
 			
 			if case .macro_execution(let key) = task {
-				if let error = storage.handleMacro(key, arguments: arguments, line: lineNumber) {
+				if let error = storage.handleMacro(key, arguments: arguments, line: lineNumber, namespace: namespace) {
 					var error = error
 					
 					error.description = key + ": " + error.description
@@ -672,14 +690,14 @@ class GBInterpreter {
 				
 				var keyWithNamespace = key
 				
-				if namespace != "" {
+				if namespace != "" && !isFunction {
 					keyWithNamespace = namespace + "::" + key
 				}
 				
 				if globalVariable {
-					storage[keyWithNamespace] = .init(value: value, type: type, scope: .global, isConstant: false)
+					storage[keyWithNamespace] = .init(value: value, type: type, scope: .global)
 				} else {
-					storage[keyWithNamespace] = .init(value: value, type: type, scope: currentScope, isConstant: false)
+					storage[keyWithNamespace] = .init(value: value, type: type, scope: currentScope)
 				}
 				
 				globalVariable = false
@@ -691,7 +709,7 @@ class GBInterpreter {
 				
 				var keyWithNamespace = key
 				
-				if namespace != "" {
+				if namespace != "" && !isFunction {
 					keyWithNamespace = namespace + "::" + key
 				}
 				

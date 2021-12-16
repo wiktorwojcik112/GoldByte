@@ -68,7 +68,7 @@ class GBShell {
 extension GBShell {
 	func getMacros(withStorage storage: GBStorage) -> [String: GBMacroAction] {
 		GBStorage.buildMacros {
-			GBMacro("EXEC") { arguments, line in
+			GBMacro("EXEC") { arguments, line, _ in
 				if arguments.count == 0 {
 					return .init(type: .macro, description: "Expected at least 1 argument argument, got \(arguments.count).", line: line, word: 0)
 				} else if arguments[safely: 0]?.type != "URL" && arguments[safely: 0]?.type != "STRING" {
@@ -176,7 +176,7 @@ extension GBShell {
 				return output
 			}
 			
-			GBMacro("CD") { arguments, line in
+			GBMacro("CD") { arguments, line, _ in
 				if arguments.count != 1 {
 					return .init(type: .macro, description: "Expected 1 argument, got \(arguments.count).", line: line, word: 0)
 				} else if arguments[safely: 0]?.type != "URL" {
@@ -225,7 +225,7 @@ extension GBShell {
 				return nil
 			}
 			
-			GBMacro("LS") { arguments, line in
+			GBMacro("LS") { arguments, line, _ in
 				if arguments.count != 0 {
 					return .init(type: .macro, description: "LS expects no arguments.", line: line, word: 0)
 				}

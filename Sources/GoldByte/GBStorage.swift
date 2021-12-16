@@ -9,7 +9,7 @@ import Foundation
 
 class GBStorage {
 	typealias Scope = GBInterpreter.Scope
-	typealias GBMacroAction = ([GBValue], Int) -> GBError?
+	typealias GBMacroAction = ([GBValue], Int, String) -> GBError?
 	
 	var errorHandler: GBErrorHandler
 	
@@ -67,7 +67,7 @@ class GBStorage {
 		let function = functions[name]!
 
 		for (n, argument) in arguments.enumerated() {
-			self[function.definition.arguments[n].name] = .init(value: argument.type == .string ? argument.value.replaceKeywordCharacters() : argument.value, type: argument.type, scope: scope, isConstant: true)
+			self[function.definition.arguments[n].name] = .init(value: argument.type == .string ? argument.value.replaceKeywordCharacters() : argument.value, type: argument.type, scope: scope)
 		}
 	}
 	
@@ -133,7 +133,7 @@ class GBStorage {
 					if !variable.isConstant {
 						variables[key] = newValue
 					} else {
-						errorHandler.handle(.init(type: .type, description: "\"\(variable.type)\" is a constant. New value will be ignored, but undefined actions may take place."))
+						errorHandler.handle(.init(type: .type, description: "\"\(key)\" is a constant. New value will be ignored, but undefined actions may take place."))
 					}
 				} else {
 					errorHandler.handle(.init(type: .type, description: "Expected \"\(variable.type)\", got \"\(newValue.type)\"."))
@@ -159,10 +159,10 @@ class GBStorage {
 		self[key].type != .null
 	}
 	
-	func handleMacro(_ key: String, arguments: [GBValue], line: Int) -> GBError? {
+	func handleMacro(_ key: String, arguments: [GBValue], line: Int, namespace: String) -> GBError? {
 		if let action = macros[key] {
 			if !disabledMacros.contains(key) {
-				return action(arguments, line)
+				return action(arguments, line, namespace)
 			} else {
 				return .init(type: .type, description: "Macro [\(key)] is disabled.", line: line, word: 0)
 			}

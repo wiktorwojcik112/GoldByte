@@ -615,8 +615,8 @@ extension String {
 		self.replacingOccurrences(of: ",", with: "^564x8&$", between: "\"").replacingOccurrences(of: ")", with: "^564x8&$", between: "\"").replacingOccurrences(of: "(", with: "^564x7&$", between: "\"")
 	}
 	
-	func prepare(withStorage storage: GBStorage) -> String {
-		var elements = self.replacingOccurrences(of: "^564x7&$", with: "(").replacingOccurrences(of: "^564x8&$", with: ")").replacingOccurrences(of: "^564x9&$", with: ",").components(separatedBy: " ")
+	func prepare(withStorage storage: GBStorage, inNamespace namespace: String) -> String {
+		var elements = self.replacingOccurrences(of: "\"", with: "").replacingOccurrences(of: "^564x7&$", with: "(").replacingOccurrences(of: "^564x8&$", with: ")").replacingOccurrences(of: "^564x9&$", with: ",").components(separatedBy: " ")
 		
 		elements = elements.map { element -> String in
 			if element.hasPrefix("%(") && element.hasSuffix(")") {
@@ -625,24 +625,65 @@ extension String {
 				element.removeFirst(2)
 				element.removeLast(1)
 				
-				if storage.variableExists(element) {
-					return storage[element].value
+				var namespaces = element.components(separatedBy: "::")
+				var key = namespaces.removeLast()
+				
+				if namespaces.count != 0 && namespaces[0] == "self" {
+					namespaces.removeFirst()
+					namespaces.insert(contentsOf: namespace.components(separatedBy: "::"), at: 0)
 				}
-			} else if let range = element.range(of: #"%\([a-zA-Z]+\)"#, options: .regularExpression) {
-				var element = element
 				
-				var rangeValue = String(element[range])
+				var seperator = namespaces.joined(separator: "::").isEmpty ? "" : "::"
 				
-				rangeValue.removeFirst(2)
-				rangeValue.removeLast(1)
-
-				if storage.variableExists(rangeValue) {
-					element.replaceSubrange(range, with: storage[rangeValue].value)
-					return element
+				if namespaces.joined(separator: "::").hasSuffix("::") {
+					seperator = ""
+				}
+				
+				key = namespaces.joined(separator: "::") + seperator + key
+				
+				if storage.variableExists(key) {
+					return storage[key].value
 				}
 			}
 			
-			return element
+			var newElement = element
+			
+			if let range = newElement.range(of: #"%\([\S0-9^]+\)"#, options: .regularExpression) {
+				var result = ""
+				
+				var rangeValue = String(newElement[range])
+				
+				rangeValue.removeFirst(2)
+				rangeValue.removeLast(1)
+				
+				let variables = rangeValue.components(separatedBy: "|")
+				
+				for variable in variables {
+					var namespaces = variable.components(separatedBy: "::")
+					var key = namespaces.removeLast()
+					
+					if namespaces.count != 0 && namespaces[0] == "self" {
+						namespaces.removeFirst()
+						namespaces.insert(contentsOf: namespace.components(separatedBy: "::"), at: 0)
+					}
+					
+					var seperator = namespaces.joined(separator: "::").isEmpty ? "" : "::"
+					
+					if namespaces.joined(separator: "::").hasSuffix("::") {
+						seperator = ""
+					}
+					
+					key = namespaces.joined(separator: "::") + seperator + key
+					
+					if storage.variableExists(key) {
+						result.append(storage[key].value)
+					}
+				}
+				
+				newElement.replaceSubrange(range, with: result)
+			}
+
+			return newElement
 		}
 		
 		return elements.joined(separator: " ")
