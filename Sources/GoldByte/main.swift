@@ -18,18 +18,13 @@ var fileIndex = 1
 
 var options: Option? = nil
 
-if CommandLine.arguments.count == 1 {
+if CommandLine.arguments.count <= 1 {
 	let shell = GBShell()
 	shell.start()
 } else {
 	if CommandLine.arguments[1] == "-info" {
 		print(GBCore.shared.getInfo())
 		exit(0)
-	}
-	
-	if CommandLine.arguments[1] == "-d" {
-		//options = .DebugMode
-		//fileIndex += 1
 	}
 	
 	var pathToFile = (CommandLine.arguments[fileIndex] as NSString).expandingTildeInPath
