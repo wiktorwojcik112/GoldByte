@@ -3,6 +3,18 @@
 # About
 GoldByte is a simple programming language that I created. There are many things that could be improved (for example: use of if let instead of switch, because after I learned about the first, I forgot about the latter). But after all, it works.
 
+# How to build?
+
+1. Install Swift toolchain for your device.
+
+On Mac, you can get it by installing Xcode.
+On Fedora Linux, you can install it using sudo dnf install swift.
+
+2. Enter root directory of GoldByte using your terminal.
+3. Run swift build -c release.
+4. Enter /.build/release at the root of GoldByte's project.
+5. Copy or use GoldByte executable.
+
 # How to use?
 
 Run the GoldByte executable (can also be placed in CLI's PATH) with the absolute path or with tilde (~). File's extension must be goldbyte. For example:
