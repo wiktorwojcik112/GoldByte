@@ -7,8 +7,8 @@
 
 import Foundation
 
-enum GBValue: Equatable {
-	static func == (lhs: GBValue, rhs: GBValue) -> Bool {
+public enum GBValue: Equatable {
+	public static func == (lhs: GBValue, rhs: GBValue) -> Bool {
 		if case .string(let leftValue) = lhs {
 			if case .string(let rightValue) = rhs {
 				return leftValue == rightValue

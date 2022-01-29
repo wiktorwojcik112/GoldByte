@@ -5,11 +5,20 @@ import PackageDescription
 
 let package = Package(
     name: "GoldByte",
+	products: [
+		.executable(
+			name: "gbtool",
+			targets: ["gbtool"]
+		),
+		.library(
+			name: "GoldByte",
+			targets: ["GoldByte"]
+		)
+	],
     dependencies: [],
     targets: [
-        .executableTarget(
-            name: "GoldByte",
-            dependencies: [],
+		.target(
+			name: "GoldByte",
 			exclude: [
 				"CHANGELOG.md",
 				"README.md"
@@ -19,7 +28,14 @@ let package = Package(
 				.process("Resources/math.txt"),
 				.process("Resources/strings.txt"),
 				.process("Resources/arrays.txt"),
-			]),
+			]
+		),
+        .executableTarget(
+            name: "gbtool",
+            dependencies: [
+				.target(name: "GoldByte")
+			]
+		),
         .testTarget(
             name: "GoldByteTests",
 			dependencies: ["GoldByte"]

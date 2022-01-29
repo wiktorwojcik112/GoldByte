@@ -11,8 +11,8 @@ protocol GBErrorHandler {
 	func handle(_ error: GBError)
 }
 
-struct GBError {
-	enum ErrorType: String {
+public struct GBError {
+	public enum ErrorType: String {
 		case parsing = "parsing"
 		case interpreting = "interpreting"
 		case type = "type"

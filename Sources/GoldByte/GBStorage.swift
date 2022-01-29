@@ -9,7 +9,7 @@ import Foundation
 
 class GBStorage {
 	typealias Scope = GBInterpreter.Scope
-	typealias GBMacroAction = ([GBValue], Int, String) -> GBError?
+	typealias GBMacroAction = GBCore.GBMacroAction
 	
 	var errorHandler: GBErrorHandler
 	
@@ -180,8 +180,8 @@ struct GBVariable {
 }
 
 
-struct GBMacro {
-	typealias GBMacroAction = GBStorage.GBMacroAction
+public struct GBMacro {
+	typealias GBMacroAction = GBCore.GBMacroAction
 	
 	var key: String
 	var action: GBMacroAction
@@ -193,8 +193,8 @@ struct GBMacro {
 }
 
 @resultBuilder
-struct GBMacrosBuilder {
-	typealias GBMacroAction = GBStorage.GBMacroAction
+public struct GBMacrosBuilder {
+	typealias GBMacroAction = GBCore.GBMacroAction
 	
 	static func buildBlock(_ macros: GBMacro...) -> [String: GBMacroAction] {
 		var builtMacros: [String: GBMacroAction] = [:]

@@ -17,23 +17,23 @@ protocol GBConsole {
 }
 
 /// GoldByte's core
-class GBCore {
-	let version = "1.1"
+public class GBCore {
+	public typealias GBMacroAction = ([GBValue], Int, String) -> GBError?
 	
-	func getInfo() -> String {
+	public let version = "1.1"
+	
+	public func getInfo() -> String {
 		"""
 		GoldByte \(version)
 		Creator: Wiktor Wójcik
 		"""
 	}
 	
-	typealias GBMacroAction = GBStorage.GBMacroAction
+	public static let shared = GBCore(configuration: defaultConfiguration)
 	
-	static let shared = GBCore(configuration: defaultConfiguration)
+	public var configuration: Configuration
 	
-	var configuration: Configuration
-	
-	static var defaultConfiguration = Configuration(console: DefaultConsole(), errorHandler: DefaultErrorHandler(), debugMode: false, flags: [.allowMultiline, .showExitMessage])
+	public static var defaultConfiguration = Configuration(console: DefaultConsole(), errorHandler: DefaultErrorHandler(), debugMode: false, flags: [.allowMultiline, .showExitMessage])
 	
 	var console: GBConsole {
 		configuration.console
@@ -58,19 +58,19 @@ class GBCore {
 		case noMain
 	}
 	
-	struct Configuration {
+	public struct Configuration {
 		var console: GBConsole
 		var errorHandler: GBErrorHandler
 		var debugMode: Bool
 		var flags: [Flag]
 	}
 	
-	func addMacros(_ macros: [String: GBMacroAction]) {
+	public func addMacros(_ macros: [String: GBMacroAction]) {
 		self.macros.merge(with: macros)
 		self.storage.macros = self.macros
 	}
 	
-	init(configuration: Configuration, macros: [String: GBMacroAction]? = nil) {
+	public init(configuration: Configuration, macros: [String: GBMacroAction]? = nil) {
 		self.configuration = configuration
 		
 		self.storage = GBStorage(errorHandler: configuration.errorHandler, macros: [String: GBMacroAction]())
@@ -107,12 +107,12 @@ class GBCore {
 		return error
 	}
 	
-	func debug(code: String, filePath: String) {
+	public func debug(code: String, filePath: String) {
 		let debugger = GBDebugger(storage: storage)
 		debugger.debug(code: code, filePath: filePath)
 	}
 	
-	func start(withCode code: String, filePath: String) {
+	public func start(withCode code: String, filePath: String) {
 		self.filePath = filePath
 		
 		let parsingResult: (parsed: [[GBToken]]?, error: GBError?) = parser.parse(code)
@@ -167,6 +167,76 @@ class GBCore {
 		
 		if configuration.flags.contains(.showExitMessage) {
 			print("\nProgram exited with exit code: 0\n")
+		}
+	}
+	
+	public func applyPlatformSpecific() {
+		#if os(OSX)
+			addMacros(getMacSpecificMacros(withStorage: storage))
+		#endif
+	}
+	
+	func getMacSpecificMacros(withStorage storage: GBStorage) -> [String: GBMacroAction] {
+		return GBStorage.buildMacros {
+			GBMacro("SHELL") { arguments, line, _ in
+				if arguments.count == 1 {
+					if case .string(let script) = arguments[0] {
+						var output: GBError? = nil
+						
+#if canImport(Cocoa)
+						let process = Process()
+						
+						if #available(OSX 10.13, *) {
+							process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+						} else {
+							process.launchPath = "/usr/bin/env"
+						}
+						
+						let errPipe = Pipe()
+						
+						process.standardError = errPipe
+						
+						let script = script.trimmingCharacters(in: .whitespacesAndNewlines)
+						
+						let arguments = script.prepare(withStorage: storage, inNamespace: "").components(separatedBy: " ")
+						
+						process.arguments = arguments
+						
+						if #available(OSX 10.13, *) {
+							do {
+								try process.run()
+							} catch {
+								output = .init(type: .macro, description: "Problem while starting script: \(error.localizedDescription)", line: line, word: 0)
+							}
+						}
+						
+						process.terminationHandler = { _ in
+							if process.terminationStatus != 0 {
+								if let error = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) {
+									output = .init(type: .macro, description: "Shell error: \(error)", line: line, word: 0)
+								}
+							}
+							
+							process.terminationHandler = nil
+						}
+						
+						if process.isRunning {
+							process.waitUntilExit()
+						}
+#else
+						output = .init(type: .macro, description: "Can't import Cococa library while it is required.", line: line, word: 0)
+#endif
+						
+						return output
+					} else {
+						return .init(type: .macro, description: "Expected STRING, got \"\(arguments[0].type)\".", line: line, word: 0)
+					}
+				} else {
+					return .init(type: .macro, description: "Expected 1 argument, but got \(arguments.count) arguments.", line: line, word: 0)
+				}
+				
+				return nil
+			}
 		}
 	}
 }

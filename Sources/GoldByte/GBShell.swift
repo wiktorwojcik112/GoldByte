@@ -10,8 +10,8 @@ import Foundation
 import AppKit
 #endif
 
-class GBShell {
-	typealias GBMacroAction = GBStorage.GBMacroAction
+public class GBShell {
+	typealias GBMacroAction = GBCore.GBMacroAction
 	
 	let fileManager = FileManager.default
 	var core: GBCore
@@ -25,7 +25,7 @@ class GBShell {
 		"~/usr/local/bin/"
 	]
 	
-	init() {
+	public init() {
 		core = GBCore(configuration: GBCore.defaultConfiguration, macros: nil)
 		core.addMacros(getMacros(withStorage: core.storage))
 		core.storage["PATH"] = .init(value: ("~" as NSString).expandingTildeInPath as String, type: .url, scope: .global, isConstant: false)
@@ -33,7 +33,7 @@ class GBShell {
 		core.configuration.console = ShellConsole()
 	}
 	
-	func start() {
+	public func start() {
 		print("GoldByte \(core.version) by Wiktor Wójcik\nType :exit to exit.")
 		while true {
 			print("\(currentPath.lastPathComponent) >> ", terminator: "")
