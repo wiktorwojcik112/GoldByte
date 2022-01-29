@@ -130,54 +130,56 @@ class GBParser {
 					continue
 				}
 				
+				let uppercased = word.uppercased()
+				
 				if wordNumber == 0 {
-					if !headerMacros.contains(word) {
+					if !headerMacros.contains(uppercased) {
 						isHeader = false
 					}
 					
 					if word.isPlainText {
-						if word == "EXIT" {
+						if uppercased == "EXIT" {
 							currentLine.append(.exit_keyword)
-						} else if word == "RETURN" && expectsCodeBlock {
+						} else if uppercased == "RETURN" && expectsCodeBlock {
 							currentLine.append(.return_keyword)
-						} else if word == "VAR" {
+						} else if uppercased == "VAR" {
 							currentLine.append(.variable_keyword)
-						} else if word == "CONST" {
+						} else if uppercased == "CONST" {
 							currentLine.append(.constant_keyword)
-						} else if word == "IF" && core.configuration.flags.contains(.allowMultiline) && expectsCodeBlock {
+						} else if uppercased == "IF" && core.configuration.flags.contains(.allowMultiline) && expectsCodeBlock {
 							currentLine.append(.if_keyword)
 							blocks.append(.IF)
 							codeBlocks.append([])
 							expectsCodeBlock = true
-						} else if word == "STRUCT" && core.configuration.flags.contains(.allowMultiline) {
+						} else if uppercased == "STRUCT" && core.configuration.flags.contains(.allowMultiline) {
 							currentLine.append(.struct_keyword)
 							blocks.append(.STRUCT)
 							codeBlocks.append([])
 							expectsCodeBlock = true
-						} else if word == "NAMESPACE" && core.configuration.flags.contains(.allowMultiline) {
+						} else if uppercased == "NAMESPACE" && core.configuration.flags.contains(.allowMultiline) {
 							currentLine.append(.namespace_keyword)
 							blocks.append(.NAMESPACE)
 							codeBlocks.append([])
 							expectsCodeBlock = true
-						} else if word == "WHILE" && core.configuration.flags.contains(.allowMultiline) && expectsCodeBlock {
+						} else if uppercased == "WHILE" && core.configuration.flags.contains(.allowMultiline) && expectsCodeBlock {
 							currentLine.append(.while_keyword)
 							blocks.append(.WHILE)
 							codeBlocks.append([])
 							expectsCodeBlock = true
-						} else if word == "FN" && core.configuration.flags.contains(.allowMultiline) {
+						} else if uppercased == "FN" && core.configuration.flags.contains(.allowMultiline) {
 							currentLine.append(.function_keyword)
 							blocks.append(.FUNCTION)
 							codeBlocks.append([])
 							expectsCodeBlock = true
 						} else {
 							if !headerMacros.contains(word) {
-								if word == "USE" && core.configuration.flags.contains(.allowMultiline) {
+								if uppercased == "USE" && core.configuration.flags.contains(.allowMultiline) {
 									return (nil, .init(type: .parsing, description: "Libraries are dissalowed.", line: lineNumber, word: wordNumber))
 								}
 								
-								currentLine.append(.macro(word))
+								currentLine.append(.macro(uppercased))
 							} else if headerMacros.contains(word) && isHeader {
-								currentLine.append(.macro(word))
+								currentLine.append(.macro(uppercased))
 							} else {
 								return (nil, .init(type: .parsing, description: "Header macros must only be used in header (before any other operation).", line: lineNumber, word: wordNumber))
 							}
@@ -206,7 +208,7 @@ class GBParser {
 						}
 						
 						currentLine.append(.function_invocation(.init(name: name, arguments: arguments)))
-					} else if word == "/IF" {
+					} else if uppercased == "/IF" {
 						if blocks.last == .IF {
 							if codeBlocks.count == 1 {
 								currentLine.append(.code_block(codeBlocks[0]))
@@ -221,7 +223,7 @@ class GBParser {
 						} else {
 							return (nil, .init(type: .parsing, description: "Ending if construction before starting one.", line: lineNumber, word: wordNumber))
 						}
-					} else if word == "/NAMESPACE" {
+					} else if uppercased == "/NAMESPACE" {
 						if blocks.last == .NAMESPACE {
 							if codeBlocks.count == 1 {
 								currentLine.append(.code_block(codeBlocks[0]))
@@ -236,7 +238,7 @@ class GBParser {
 						} else {
 							return (nil, .init(type: .parsing, description: "Ending if construction before starting one.", line: lineNumber, word: wordNumber))
 						}
-					} else if word == "/WHILE" {
+					} else if uppercased == "/WHILE" {
 						if blocks.last == .WHILE {
 							if codeBlocks.count == 1 {
 								currentLine.append(.code_block(codeBlocks[0]))
@@ -251,7 +253,7 @@ class GBParser {
 						} else {
 							return (nil, .init(type: .parsing, description: "Ending while construction before starting one.", line: lineNumber, word: wordNumber))
 						}
-					} else if word == "/STRUCT" {
+					} else if uppercased == "/STRUCT" {
 						if blocks.last == .STRUCT {
 							if codeBlocks.count == 1 {
 								currentLine.append(.code_block(codeBlocks[0]))
@@ -266,7 +268,7 @@ class GBParser {
 						} else {
 							return (nil, .init(type: .parsing, description: "Ending structure before starting one.", line: lineNumber, word: wordNumber))
 						}
-					} else if word == "/FN" {
+					} else if uppercased == "/FN" {
 						if blocks.last == .FUNCTION {
 							if codeBlocks.count == 1 {
 								currentLine.append(.code_block(codeBlocks[0]))
@@ -519,7 +521,7 @@ class GBParser {
 						} else {
 							return (nil, .init(type: .parsing, description: "Invalid token.", line: lineNumber, word: wordNumber))
 						}
-					} else if word.range(of: #"[a-zA-Z:]+\([a-zA-Z,0-9\"/: \^&$.?!]*\)"#, options: .regularExpression) != nil {
+					} else if word.range(of: #"[a-zA-Z:]+\([a-zA-Z,0-9\"/: \^&$.?!]*\)"#, options: .regularExpression) != nil  && expectsCodeBlock {
 						if word[word.range(of: #"[a-zA-Z:]+\([a-zA-Z,0-9\"/: \^&$.?!]*\)"#, options: .regularExpression)!] == word {
 							let name = word.components(separatedBy: "(")[0]
 							

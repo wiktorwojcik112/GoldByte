@@ -11,7 +11,7 @@ NAMESPACE Math
 				RETURN i
 			/IF
 
-			ASSIGN $i <i + 1>
+			SET $i <i + 1>
 		/WHILE
 
 		RETURN 0
@@ -27,13 +27,13 @@ NAMESPACE Math
 		/IF
 
 		VAR NUMBER result 0
-		ASSIGN $result number
+		SET $result number
 
 		VAR NUMBER i 1
 
 		WHILE # i != power #
-			ASSIGN $result <result * number>
-			ASSIGN $i <i + 1>
+			SET $result <result * number>
+			SET $i <i + 1>
 		/WHILE
 
 		RETURN result

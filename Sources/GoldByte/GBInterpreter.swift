@@ -44,13 +44,14 @@ class GBInterpreter {
 		self.debugger = debugger
 	}
 	
-	func interpret(_ code: [[GBToken]], scope: Scope = .global, isInsideCodeBlock: Bool = false, returnType: GBStorage.ValueType? = nil, continueAt: Int = 0, namespace: String? = nil, isFunction: Bool = false) -> (GBValue?, Int, GBError?) {
+	func interpret(_ code: [[GBToken]], scope: Scope = .global, isInsideCodeBlock: Bool = false, returnType: GBStorage.ValueType? = nil, continueAt: Int = 0, namespace: String? = nil, isFunction: Bool = false, lostLineNumbers: Int = 0) -> (GBValue?, Int, GBError?) {
 		let namespace = namespace ?? ""
 		let currentScope = scope
 		var task: GBTask? = nil
 		
 		var globalVariable = false
 		for (lineNumber, line) in code.enumerated() {
+			var lineNumber = lineNumber + lostLineNumbers
 			var arguments: [GBValue] = []
 			var key: String? = nil
 			
@@ -92,7 +93,7 @@ class GBInterpreter {
 								
 								storage.generateVariables(forFunction: invocation.name, withArguments: arguments, withScope: scope)
 								
-								let (_, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type, namespace: invocation.name.components(separatedBy: "::").dropLast().joined(separator: "::") + "::", isFunction: true)
+								let (_, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type, namespace: invocation.name.components(separatedBy: "::").dropLast().joined(separator: "::") + "::", isFunction: true, lostLineNumbers: lineNumber)
 								
 								if let error = functionError {
 									return (nil, 1, error)
@@ -555,7 +556,7 @@ class GBInterpreter {
 							
 							let scope = GBStorage.Scope(UUID())
 
-							let (returnValue, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type, namespace: invocation.name.components(separatedBy: "::").dropLast().joined(separator: "::") + "::", isFunction: true)
+							let (returnValue, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type, namespace: invocation.name.components(separatedBy: "::").dropLast().joined(separator: "::") + "::", isFunction: true, lostLineNumbers: lineNumber)
 							
 							if let error = functionError {
 								return (nil, 1, error)
@@ -727,13 +728,13 @@ class GBInterpreter {
 				}
 				
 				if namespace == "" {
-					let (_, exitCode, error) = interpret(block, isInsideCodeBlock: true, namespace: name)
+					let (_, exitCode, error) = interpret(block, isInsideCodeBlock: true, namespace: name, lostLineNumbers: lineNumber)
 					
 					if let error = error {
 						return (nil, exitCode, error)
 					}
 				} else {
-					let (_, exitCode, error) = interpret(block, isInsideCodeBlock: true, namespace: namespace + "::" + name)
+					let (_, exitCode, error) = interpret(block, isInsideCodeBlock: true, namespace: namespace + "::" + name, lostLineNumbers: lineNumber)
 					
 					if let error = error {
 						return (nil, exitCode, error)
@@ -766,7 +767,7 @@ class GBInterpreter {
 				
 				if let result = result {
 					if result {
-						let (returnValue, exitCode, error) = interpret(block, isInsideCodeBlock: true, returnType: returnType)
+						let (returnValue, exitCode, error) = interpret(block, isInsideCodeBlock: true, returnType: returnType, lostLineNumbers: lineNumber)
 						
 						if let error = error {
 							return (nil, exitCode, error)
@@ -797,7 +798,7 @@ class GBInterpreter {
 						conditionResult = result
 						
 						if result {
-							let (returnValue, exitCode, error) = interpret(block, isInsideCodeBlock: true, returnType: returnType)
+							let (returnValue, exitCode, error) = interpret(block, isInsideCodeBlock: true, returnType: returnType, lostLineNumbers: lineNumber)
 							
 							if let error = error {
 								return (nil, exitCode, error)

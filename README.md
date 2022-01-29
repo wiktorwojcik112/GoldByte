@@ -1,9 +1,16 @@
 # GoldByte
 
 # About
-GoldByte is a simple programming language that I created. There are many things that could be improved (for example: use of if let instead of switch, because after I learned about the first, I forgot about the latter). But after all, it works.
+GoldByte is a simple programming language that I created. There are many things that can be improved (for example: use of if instead of switch, because after I learned about the first, I forgot about the latter). But after all, it works.
 
-# How to build?
+WARNING!
+Currently GoldByte is in the early stage of development so many things will change.
+
+# How to build and use?
+
+This package contains 2 targets:
+- GoldByte - library containing language
+- gbtool - tool to run GoldByte code
 
 1. Install Swift toolchain for your device.
 
@@ -17,17 +24,18 @@ On Fedora Linux, you can install it using sudo dnf install swift.
 
 # How to use?
 
-Run the GoldByte executable (can also be placed in CLI's PATH) with the absolute path or with tilde (~). File's extension must be goldbyte. For example:
+Run the gbtool executable (can also be placed in CLI's PATH). File's extension must be "goldbyte", but you don't have to write it. For example:
 
-GoldByte ~/Desktop/file1.goldbyte
-./GoldByte /Users/wiktorwojcik/Desktop/file2.goldbyte
+gbtool ~/Desktop/file1.goldbyte
+./gbtool /Users/wiktorwojcik/Desktop/file2.goldbyte
+./gbtool /Users/wiktorwojcik/Desktop/file3
 
 # To-Do:
 
-[ ] Replace many if let's with switch
+[ ] Replace many if's with switch
 [ ] Improve code readability
-[ ] Move GoldByte's core to seperate target for better modularity
-[ ] Add support for relative paths as arguments
+[x] Move GoldByte's core to seperate target for better modularity
+[x] Add support for relative paths as arguments
 [ ] Remove support for top-level code (remember, that USE is a macro)
 [ ] Improve errors
 [ ] Add documentation
@@ -82,7 +90,7 @@ Example:
 
 FN getFullName(name:STRING,surname:STRING):STRING
 	VAR STRING fullName ""
-	ASSIGN $fullName Strings::concat(name,surname)
+	SET $fullName Strings::concat(name,surname)
 	RETURN fullName
 /FN
 
@@ -98,7 +106,7 @@ USE "std"
 
 FN getFullName(name:STRING,surname:STRING):STRING
 	VAR STRING fullName ""
-	ASSIGN $fullName Strings::concat(name,surname)
+	SET $fullName Strings::concat(name,surname)
 	RETURN fullName
 /FN
 

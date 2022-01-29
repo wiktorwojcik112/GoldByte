@@ -20,14 +20,13 @@ let package = Package(
 		.target(
 			name: "GoldByte",
 			exclude: [
-				"CHANGELOG.md",
-				"README.md"
 			],
 			resources: [
 				.process("Resources/std.txt"),
 				.process("Resources/math.txt"),
 				.process("Resources/strings.txt"),
 				.process("Resources/arrays.txt"),
+				.process("Resources/vectors.txt")
 			]
 		),
         .executableTarget(

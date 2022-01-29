@@ -398,7 +398,7 @@ extension GBCore {
 				}
 			}
 			
-			GBMacro("ASSIGN") { arguments, line, namespace in
+			GBMacro("SET") { arguments, line, namespace in
 				var modifiedVariable = ""
 				
 				var typeOfNewValue: GBStorage.ValueType = .null

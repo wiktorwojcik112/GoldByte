@@ -1,6 +1,7 @@
 USE "strings"
 USE "arrays"
 USE "math"
+USE "vectors"
 
 FN input(text:STRING):STRING
 	VAR STRING __temporary__ ""

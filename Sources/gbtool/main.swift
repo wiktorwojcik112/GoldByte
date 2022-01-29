@@ -28,26 +28,39 @@ if CommandLine.arguments.count <= 1 {
 		exit(0)
 	}
 	
-	var pathToFile = (CommandLine.arguments[fileIndex] as NSString).expandingTildeInPath
+	var path = ""
 	
-	if !pathToFile.hasSuffix(".goldbyte") {
-		pathToFile.append(".goldbyte")
+	if CommandLine.arguments[fileIndex].hasPrefix("~") {
+		path = (CommandLine.arguments[fileIndex] as NSString).expandingTildeInPath
+	} else {
+		let toolsDirectory = URL(string: CommandLine.arguments[0])!.deletingLastPathComponent().absoluteString
+		print("relative path: \(toolsDirectory + CommandLine.arguments[fileIndex])")
+		
+		if FileManager.default.fileExists(atPath: CommandLine.arguments[fileIndex]) {
+			path = CommandLine.arguments[fileIndex]
+		} else if FileManager.default.fileExists(atPath: toolsDirectory + CommandLine.arguments[fileIndex]) {
+			path = toolsDirectory + CommandLine.arguments[fileIndex]
+		}
 	}
 	
-	if !FileManager.default.fileExists(atPath: pathToFile) {
-		print("ERROR: No file found at: \(pathToFile)")
+	if !path.hasSuffix(".goldbyte") {
+		path.append(".goldbyte")
+	}
+	
+	if !FileManager.default.fileExists(atPath: path) {
+		print("ERROR: No file found at: \(path)")
 		exit(1)
 	}
 	
 	do {
-		let code = try String(contentsOfFile: pathToFile)
+		let code = try String(contentsOfFile: path)
 		
 		GBCore.shared.applyPlatformSpecific()
 
 		if options == .DebugMode {
-			GBCore.shared.debug(code: code, filePath: pathToFile)
+			GBCore.shared.debug(code: code, filePath: path)
 		} else {
-			GBCore.shared.start(withCode: code, filePath: pathToFile)
+			GBCore.shared.start(withCode: code, filePath: path)
 		}
 	} catch {
 		print("ERROR: \(error.localizedDescription)")
