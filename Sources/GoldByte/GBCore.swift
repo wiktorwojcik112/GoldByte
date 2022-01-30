@@ -20,7 +20,7 @@ protocol GBConsole {
 public class GBCore {
 	public typealias GBMacroAction = ([GBValue], Int, String) -> GBError?
 	
-	public let version = "1.1"
+	public let version = "1.0.1"
 	
 	public func getInfo() -> String {
 		"""
