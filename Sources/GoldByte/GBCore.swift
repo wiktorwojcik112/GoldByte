@@ -158,7 +158,7 @@ public class GBCore {
 				errorHandler.handle(error)
 				
 				if configuration.flags.contains(.showExitMessage) {
-					print("\nProgram exited with exit code: \(exitCode)\n")
+					print("\nProgram ended with exit code: \(exitCode)\n")
 				}
 				
 				return
@@ -206,14 +206,14 @@ public class GBCore {
 							do {
 								try process.run()
 							} catch {
-								output = .init(type: .macro, description: "Problem while starting script: \(error.localizedDescription)", line: line, word: 0)
+								output = .init(type: .panic, description: "Problem while starting script: \(error.localizedDescription)", line: line, word: 0)
 							}
 						}
 						
 						process.terminationHandler = { _ in
 							if process.terminationStatus != 0 {
 								if let error = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) {
-									output = .init(type: .macro, description: "Shell error: \(error)", line: line, word: 0)
+									output = .init(type: .panic, description: "Shell error: \(error)", line: line, word: 0)
 								}
 							}
 							
@@ -224,15 +224,15 @@ public class GBCore {
 							process.waitUntilExit()
 						}
 #else
-						output = .init(type: .macro, description: "Can't import Cococa library while it is required.", line: line, word: 0)
+						output = .init(type: .panic, description: "Can't import Cococa library while it is required.", line: line, word: 0)
 #endif
 						
 						return output
 					} else {
-						return .init(type: .macro, description: "Expected STRING, got \"\(arguments[0].type)\".", line: line, word: 0)
+						return .init(type: .panic, description: "Expected STRING, got \"\(arguments[0].type)\".", line: line, word: 0)
 					}
 				} else {
-					return .init(type: .macro, description: "Expected 1 argument, but got \(arguments.count) arguments.", line: line, word: 0)
+					return .init(type: .panic, description: "Expected 1 argument, but got \(arguments.count) arguments.", line: line, word: 0)
 				}
 				
 				return nil

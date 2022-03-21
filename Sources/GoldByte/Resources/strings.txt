@@ -1,5 +1,5 @@
-NAMESPACE Strings
-	FN concat(left:ANY,right:ANY):STRING
-		RETURN "%(left|right)"
-	/FN
-/NAMESPACE
+namespace Strings {
+	func concat(left:ANY,right:ANY):STRING {
+		return "%(left|right)"
+	}
+}

@@ -18,179 +18,457 @@ class GBParser {
 		self.storage = storage
 	}
 	
-	private func connectStrings(_ line: [String], lineNumber: Int) -> ([String]?, GBError?) {
-		var newLine = [String]()
-		
-		var hasStartedString = false
-		var string = ""
-		
-		for word in line {
-			if word == "\"" && !hasStartedString {
-				hasStartedString = true
-				string.append(" ")
-			} else if word == "\"" && hasStartedString {
-				string.append(" ")
-				newLine.append("\"" + string.replaceKeywordCharactersBetween() + "\"")
-				hasStartedString = false
-			} else if (word.hasPrefix("\"") && word.hasSuffix("\"")) || (word == "\"\"") {
-				newLine.append(word.replaceKeywordCharactersBetween())
-			} else if word.hasPrefix("\"") && !hasStartedString {
-				hasStartedString = true
-				string.append(word)
-			} else if word.hasSuffix("\"") && hasStartedString {
-				string.append(" " + word)
-				
-				newLine.append("\"" + string.replaceKeywordCharactersBetween() + "\"")
-				
-				hasStartedString = false
-			} else if word.contains("\"") {
-				if hasStartedString {
-					string.append(" " + word)
-					newLine.append(string.replaceKeywordCharactersBetween())
-					hasStartedString = false
-				} else {
-					string.append(word)
-					
-					let countOfQuationMarks = word.count(of: "\"")
-					
-					if countOfQuationMarks != 0 && countOfQuationMarks % 2 == 0 {
-						newLine.append(string.replaceKeywordCharactersBetween())
-						hasStartedString = false
-					} else {
-						hasStartedString = true
-					}
-				}
-			} else if hasStartedString {
-				string.append(" " + word)
-			} else {
-				newLine.append(word)
-			}
-			
-			if !hasStartedString {
-				string = ""
-			}
-		}
-		
-		if hasStartedString {
-			return (nil, .init(type: .parsing, description: "Started string but not finished.", line: lineNumber, word: 0))
-		}
-		
-		return (newLine, nil)
-	}
-	
 	func parse(_ code: String) -> ([[GBToken]]?, GBError?) {
-		let code = code.replacingOccurrences(of: "\t", with: "")
+		var code = code
+		
+		code.append("\n\n")
 		
 		var result = [[GBToken]]()
 		
-		let lines = code.components(separatedBy: "\n").map { element -> String in
-			if element.isEmpty {
-				return "//"
-			} else {
-				return element.trimmingCharacters(in: .whitespaces)
-			}
-		}
-		
-		
-		var blocks: [GBBlock] = []
+		var blocks = 0
 		var codeBlocks = [[[GBToken]]]()
 		
 		var expectsCodeBlock = false
 		
 		var isHeader = true
-
-		for (lineNumber, line) in lines.enumerated() {
-			if line.hasPrefix("//") {
+		
+		var currentLine = [GBToken]()
+		
+		var hasStartedEquation = false
+		var hasStartedLogicalExpression = false
+		
+		var logicalExpressionElements = [GBLogicalElement]()
+		var lastWasLogicalOperator = true
+		
+		var equation = [GBEquationSymbol]()
+		var lastWasNumber = false
+		
+		let headerMacros = ["use"]
+		
+		var lineNumber = 0
+		var wordNumber = 0
+		var word = ""
+		
+		var ignoreLine = false
+		var includeSpace = false
+		var parsedLastWord = false
+		var isEndOfTheLine = false
+		var isBeginningOfTheLine = true
+		
+		for character in code {
+			defer {
+				if parsedLastWord {
+					word = ""
+					if !isBeginningOfTheLine {
+						wordNumber += 1
+					}
+					parsedLastWord = false
+					
+					if isEndOfTheLine {
+						if !currentLine.isEmpty {
+							if expectsCodeBlock {
+								var firstIsKeyword = false
+								
+								switch currentLine.first! {
+									case .if_keyword, .function_keyword, .while_keyword, .namespace_keyword, .struct_keyword:
+										firstIsKeyword = true
+									default:
+										firstIsKeyword = false
+								}
+								
+								if blocks > 1 {
+									if firstIsKeyword {
+										codeBlocks[codeBlocks.endIndex - 2].append(currentLine)
+									} else {
+										codeBlocks[codeBlocks.endIndex - 1].append(currentLine)
+									}
+								} else if blocks == 1 {
+									if firstIsKeyword {
+										result.append(currentLine)
+									} else {
+										codeBlocks[codeBlocks.endIndex - 1].append(currentLine)
+									}
+								} else {
+									result.append(currentLine)
+								}
+							} else {
+								result.append(currentLine)
+							}
+						}
+						
+						lineNumber += 1
+						hasStartedEquation = false
+						hasStartedLogicalExpression = false
+						logicalExpressionElements = [GBLogicalElement]()
+						lastWasLogicalOperator = true
+						equation = [GBEquationSymbol]()
+						lastWasNumber = false
+						ignoreLine = false
+						isBeginningOfTheLine = true
+						wordNumber = 0
+						isEndOfTheLine = false
+						currentLine = []
+					}
+				}
+			}
+			
+			if character == "\n" {
+				isEndOfTheLine = true
+				parsedLastWord = true
+				
+				if ignoreLine {
+					continue
+				}
+			} else if ignoreLine {
+				continue
+			} else if character == "\"" { //|| character == "#" || character == "|" {
+				includeSpace = !includeSpace
+				word.append(character)
+				continue
+			} else if character == " " {
+				if includeSpace {
+					word.append(" ")
+					continue
+				}
+		
+				parsedLastWord = true
+			} else if character == "\t" {
+				continue
+			} else {
+				isBeginningOfTheLine = false
+				word.append(character)
 				continue
 			}
 			
-			var currentLine = [GBToken]()
-			
-			let (connectedStrings, error) = connectStrings(line.components(separatedBy: " "), lineNumber: lineNumber)
-			
-			if let error = error {
-				return (nil, error)
+			if word.hasPrefix("//") {
+				ignoreLine = true
+				continue
 			}
 			
-			let words = connectedStrings!
+			if word.isEmpty {
+				continue
+			}
 			
-			var hasStartedEquation = false
-			var hasStartedLogicalExpression = false
-			
-			var logicalExpressionElements = [GBLogicalElement]()
-			var lastWasLogicalOperator = true
-			
-			var equation = [GBEquationSymbol]()
-			var lastWasNumber = false
-
-			let headerMacros = ["USE"]
-			
-			for (wordNumber, word) in words.enumerated() {
-				if word.isEmpty {
-					continue
+			if wordNumber == 0 {
+				if !headerMacros.contains(word) {
+					isHeader = false
 				}
 				
-				let uppercased = word.uppercased()
-				
-				if wordNumber == 0 {
-					if !headerMacros.contains(uppercased) {
-						isHeader = false
-					}
-					
-					if word.isPlainText {
-						if uppercased == "EXIT" {
-							currentLine.append(.exit_keyword)
-						} else if uppercased == "RETURN" && expectsCodeBlock {
-							currentLine.append(.return_keyword)
-						} else if uppercased == "VAR" {
-							currentLine.append(.variable_keyword)
-						} else if uppercased == "CONST" {
-							currentLine.append(.constant_keyword)
-						} else if uppercased == "IF" && core.configuration.flags.contains(.allowMultiline) && expectsCodeBlock {
-							currentLine.append(.if_keyword)
-							blocks.append(.IF)
-							codeBlocks.append([])
-							expectsCodeBlock = true
-						} else if uppercased == "STRUCT" && core.configuration.flags.contains(.allowMultiline) {
-							currentLine.append(.struct_keyword)
-							blocks.append(.STRUCT)
-							codeBlocks.append([])
-							expectsCodeBlock = true
-						} else if uppercased == "NAMESPACE" && core.configuration.flags.contains(.allowMultiline) {
-							currentLine.append(.namespace_keyword)
-							blocks.append(.NAMESPACE)
-							codeBlocks.append([])
-							expectsCodeBlock = true
-						} else if uppercased == "WHILE" && core.configuration.flags.contains(.allowMultiline) && expectsCodeBlock {
-							currentLine.append(.while_keyword)
-							blocks.append(.WHILE)
-							codeBlocks.append([])
-							expectsCodeBlock = true
-						} else if uppercased == "FN" && core.configuration.flags.contains(.allowMultiline) {
-							currentLine.append(.function_keyword)
-							blocks.append(.FUNCTION)
-							codeBlocks.append([])
-							expectsCodeBlock = true
+				if word.isPlainText {
+					if word == "exit" {
+						currentLine.append(.exit_keyword)
+					} else if word == "return" && expectsCodeBlock {
+						currentLine.append(.return_keyword)
+					} else if word == "var" {
+						currentLine.append(.variable_keyword)
+					} else if word == "const" {
+						currentLine.append(.constant_keyword)
+					} else if word == "if" && core.configuration.flags.contains(.allowMultiline) && expectsCodeBlock {
+						currentLine.append(.if_keyword)
+					} else if word == "struct" && core.configuration.flags.contains(.allowMultiline) {
+						currentLine.append(.struct_keyword)
+					} else if word == "namespace" && core.configuration.flags.contains(.allowMultiline) {
+						currentLine.append(.namespace_keyword)
+					} else if word == "while" && core.configuration.flags.contains(.allowMultiline) && expectsCodeBlock {
+						currentLine.append(.while_keyword)
+					} else if word == "func" && core.configuration.flags.contains(.allowMultiline) {
+						currentLine.append(.function_keyword)
+					} else {
+						if !headerMacros.contains(word) {
+							if word == "use" && core.configuration.flags.contains(.allowMultiline) {
+								return (nil, .init(type: .panic, description: "Libraries are dissalowed.", line: lineNumber, word: wordNumber))
+							}
+							
+							currentLine.append(.macro(word))
+						} else if headerMacros.contains(word) && isHeader {
+							currentLine.append(.macro(word))
 						} else {
-							if !headerMacros.contains(word) {
-								if uppercased == "USE" && core.configuration.flags.contains(.allowMultiline) {
-									return (nil, .init(type: .parsing, description: "Libraries are dissalowed.", line: lineNumber, word: wordNumber))
-								}
-								
-								currentLine.append(.macro(uppercased))
-							} else if headerMacros.contains(word) && isHeader {
-								currentLine.append(.macro(uppercased))
+							return (nil, .init(type: .panic, description: "Header macros must only be used in header (before any other operation).", line: lineNumber, word: wordNumber))
+						}
+					}
+				} else if word[word.range(of: #"[a-zA-Z:]+\([a-zA-Z.,:"_&%$#@!-+ 1-9\^&$+-~`]*\)"#, options: .regularExpression) ?? word.startIndex..<(word.index(word.startIndex, offsetBy: 0))] == word {
+					let name = word.components(separatedBy: "(")[0]
+					
+					let argumentParts = word.components(separatedBy: "(")[1].dropLast().components(separatedBy: ",")
+					
+					var arguments = [GBFunctionArgument]()
+					
+					if !argumentParts[0].isEmpty {
+						for argumentPart in argumentParts {
+							if argumentPart.isString {
+								arguments.append(.init(value: argumentPart.replacingOccurrences(of: "\"", with: ""), type: .string))
+							} else if argumentPart.isBool {
+								arguments.append(.init(value: argumentPart, type: .bool))
+							} else if argumentPart.isNumber {
+								arguments.append(.init(value: argumentPart, type: .number))
+							} else if argumentPart.isPlainText {
+								arguments.append(.init(value: argumentPart, type: .variable))
 							} else {
-								return (nil, .init(type: .parsing, description: "Header macros must only be used in header (before any other operation).", line: lineNumber, word: wordNumber))
+								return (nil, .init(type: .panic, description: "Unexpected token: \(word).", line: lineNumber, word: wordNumber))
 							}
 						}
-					} else if word[word.range(of: #"[a-zA-Z:]+\([a-zA-Z.,:"_&%$#@!-+ 1-9\^&$+-~`]*\)"#, options: .regularExpression) ?? word.startIndex..<(word.index(word.startIndex, offsetBy: 1))] == word {
+					}
+					
+					currentLine.append(.function_invocation(.init(name: name, arguments: arguments)))
+				} else if word == "}" {
+					if codeBlocks.count == 1 {
+						currentLine.append(.code_block(codeBlocks[0]))
+					} else {
+						if let last = codeBlocks.last {
+							codeBlocks[codeBlocks.endIndex - 2].append([.code_block(last)])
+						} else {
+							return (nil, .init(type: .panic, description: "Invalid block.", line: lineNumber, word: wordNumber))
+						}
+					}
+					
+					blocks -= 1
+					
+					if codeBlocks.count != 0 {
+						codeBlocks.removeLast()
+					}
+					
+					expectsCodeBlock = blocks != 0
+				}
+			} else {
+				if word == "{" {
+					blocks += 1
+					codeBlocks.append([])
+					expectsCodeBlock = true
+				} else if hasStartedLogicalExpression {
+					var word = word
+					var hasEnding = false
+					
+					if word == "#" {
+						hasStartedLogicalExpression = false
+						currentLine.append(.logical_expression(.init(logicalExpressionElements, storage: storage)))
+						logicalExpressionElements = []
+						continue
+					}
+					
+					if word.hasSuffix("#") {
+						hasStartedLogicalExpression = false
+						hasEnding = true
+						word = word.replacingOccurrences(of: "#", with: "")
+					}
+					
+					if word.isLogicalOperator && !lastWasLogicalOperator {
+						if word == "==" {
+							logicalExpressionElements.append(.equals)
+						} else if word == "||" {
+							logicalExpressionElements.append(.or)
+						} else if word == "&&" {
+							logicalExpressionElements.append(.and)
+						} else if word == ">" {
+							logicalExpressionElements.append(.higherThan)
+						} else if word == "<" {
+							logicalExpressionElements.append(.lowerThan)
+						} else if word == "!=" {
+							logicalExpressionElements.append(.not_equals)
+						}
+						
+						lastWasLogicalOperator = true
+					} else if word.isBool && lastWasLogicalOperator {
+						logicalExpressionElements.append(.value(.bool(Bool(word)!)))
+						lastWasLogicalOperator = false
+					} else if word.isNumber && lastWasLogicalOperator {
+						logicalExpressionElements.append(.value(.number(Float(word)!)))
+						lastWasLogicalOperator = false
+					} else if word.isString && lastWasLogicalOperator {
+						logicalExpressionElements.append(.value(.string(word.replacingOccurrences(of: "\"", with: ""))))
+						lastWasLogicalOperator = false
+					} else if word.isPlainText && lastWasLogicalOperator {
+						logicalExpressionElements.append(.variable(word))
+						lastWasLogicalOperator = false
+					} else {
+						return (nil, .init(type: .panic, description: "Invalid element in logical epxression: \(word).", line: lineNumber, word: wordNumber))
+					}
+					
+					if hasEnding {
+						currentLine.append(.logical_expression(.init(logicalExpressionElements, storage: storage)))
+						logicalExpressionElements = []
+					}
+				} else if word == "#" || word.hasPrefix("#") || word.hasSuffix("#") {
+					if hasStartedLogicalExpression && word == "#" {
+						currentLine.append(.logical_expression(.init(logicalExpressionElements, storage: storage)))
+						hasStartedLogicalExpression = false
+						logicalExpressionElements = []
+					} else if !hasStartedLogicalExpression && word == "#" {
+						hasStartedLogicalExpression = true
+					} else if hasStartedLogicalExpression && word.hasSuffix("#") {
+						let word = word.replacingOccurrences(of: "#", with: "")
+						
+						if word.isNumber && lastWasLogicalOperator {
+							logicalExpressionElements.append(.value(.number(Float(word)!)))
+							lastWasLogicalOperator = false
+						} else if word.isString && lastWasLogicalOperator {
+							logicalExpressionElements.append(.value(.string(word.replacingOccurrences(of: "\"", with: ""))))
+							lastWasLogicalOperator = false
+						} else if word.isPlainText && lastWasLogicalOperator {
+							logicalExpressionElements.append(.variable(word))
+							lastWasLogicalOperator = false
+						} else {
+							return (nil, .init(type: .panic, description: "Invalid element in logical epxression: \(word).", line: lineNumber, word: wordNumber))
+						}
+						
+						currentLine.append(.logical_expression(.init(logicalExpressionElements, storage: storage)))
+						hasStartedLogicalExpression = false
+						logicalExpressionElements = []
+					} else if !hasStartedLogicalExpression && word.hasPrefix("#") {
+						hasStartedLogicalExpression = true
+						
+						let word = word.replacingOccurrences(of: "#", with: "")
+						
+						if word.isNumber && lastWasLogicalOperator {
+							logicalExpressionElements.append(.value(.number(Float(word)!)))
+							lastWasLogicalOperator = false
+						} else if word.isString && lastWasLogicalOperator {
+							logicalExpressionElements.append(.value(.string(word.replacingOccurrences(of: "\"", with: ""))))
+							lastWasLogicalOperator = false
+						} else if word.isPlainText && lastWasLogicalOperator {
+							logicalExpressionElements.append(.variable(word))
+							lastWasLogicalOperator = false
+						} else {
+							return (nil, .init(type: .panic, description: "Invalid element in logical epxression: \(word).", line: lineNumber, word: wordNumber))
+						}
+					} else {
+						return (nil, .init(type: .panic, description: "Invalid arrangment of logical expression sign (#): \(word).", line: lineNumber, word: wordNumber))
+					}
+				} else if word == "|" || word.hasPrefix("|") || word.hasSuffix("|") {
+					if !hasStartedEquation {
+						hasStartedEquation = true
+						
+						if word.hasPrefix("|") {
+							let withoutSymbol = word.replacingOccurrences(of: "|", with: "")
+							
+							if withoutSymbol.isNumber {
+								equation.append(.number(Float(withoutSymbol)!))
+							} else if withoutSymbol.isPlainText {
+								equation.append(.variable(withoutSymbol))
+							} else {
+								return (nil, .init(type: .panic, description: "Invalid arrangment in equation: \(word).", line: lineNumber, word: wordNumber))
+							}
+							
+							lastWasNumber = true
+						}
+					} else {
+						hasStartedEquation = false
+					
+						if word.hasSuffix("|") {
+							let withoutSymbol = word.replacingOccurrences(of: "|", with: "")
+							
+							if withoutSymbol.isNumber {
+								equation.append(.number(Float(withoutSymbol)!))
+							} else if withoutSymbol.isPlainText {
+								equation.append(.variable(withoutSymbol))
+							} else {
+								return (nil, .init(type: .panic, description: "Invalid arrangment in equation: \(word).", line: lineNumber, word: wordNumber))
+							}
+							
+							lastWasNumber = false
+						}
+						
+						currentLine.append(.equation(.init(equation, storage: storage)))
+						equation = []
+					}
+				} else if hasStartedEquation {
+					if word.isNumber {
+						if !lastWasNumber {
+							equation.append(.number(Float(word)!))
+							lastWasNumber = true
+						} else {
+							return (nil, .init(type: .panic, description: "Invalid arrangment in equation: \(word).", line: lineNumber, word: wordNumber))
+						}
+					} else if word.isPlainText {
+						if !lastWasNumber {
+							equation.append(.variable(word))
+							lastWasNumber = true
+						} else {
+							return (nil, .init(type: .panic, description: "Invalid arrangment in equation: \(word).", line: lineNumber, word: wordNumber))
+						}
+					} else if word.isMathSymbol {
+						if lastWasNumber {
+							if word == "+" {
+								equation.append(.plus)
+							} else if word == "*" {
+								equation.append(.multiply)
+							} else if word == "/" {
+								equation.append(.divide)
+							} else if word == "-" {
+								equation.append(.minus)
+							}
+							
+							lastWasNumber = false
+						} else {
+							return (nil, .init(type: .panic, description: "Invalid arrangment in equation: \(word).", line: lineNumber, word: wordNumber))
+						}
+					} else {
+						return (nil, .init(type: .panic, description: "Invalid word in equation: \(word).", line: lineNumber, word: wordNumber))
+					}
+				} else if word.range(of: #"\([A-Z]+\)[a-zA-Z"1-9/~$]+"#, options: .regularExpression) != nil {
+					if word[word.range(of: #"\([A-Z]+\)[a-zA-Z"1-9/~$]+"#, options: .regularExpression)!] == word {
+						if let type = word.slice(from: "(", to: ")") {
+							if let _ = GBToken.ValueType(rawValue: type) {
+								let value = word.components(separatedBy: ")")[1]
+								
+								if value.isPointer {
+									currentLine.append(.casted(.pointer(value.replacingOccurrences(of: "$", with: "")), .init(rawValue: type)!))
+								} else if value.isString {
+									currentLine.append(.casted(.string(value.replacingOccurrences(of: "\"", with: "")), .init(rawValue: type)!))
+								} else if value.isNumber {
+									currentLine.append(.casted(.string(value.replacingOccurrences(of: "\"", with: "")), .init(rawValue: type)!))
+								} else if value.isBool {
+									currentLine.append(.casted(.string(value.replacingOccurrences(of: "\"", with: "")), .init(rawValue: type)!))
+								} else if value.isURL {
+									currentLine.append(.casted(.string(value.replacingOccurrences(of: "\"", with: "")), .init(rawValue: type)!))
+								} else {
+									return (nil, .init(type: .panic, description: "Invalid token.", line: lineNumber, word: wordNumber))
+								}
+							} else {
+								return (nil, .init(type: .panic, description: "Expected type annotation (NUMBER, STRING, etc), got \(type).", line: lineNumber, word: wordNumber))
+							}
+						} else {
+							return (nil, .init(type: .panic, description: "Invalid token.", line: lineNumber, word: wordNumber))
+						}
+					} else {
+						return (nil, .init(type: .panic, description: "Invalid token.", line: lineNumber, word: wordNumber))
+					}
+				} else if word.range(of: #"[a-zA-Z]+\([a-zA-Z:,]*\):[A-Z]+"#, options: .regularExpression) != nil {
+					if word[word.range(of: #"[a-zA-Z]+\([a-zA-Z:,]*\):[A-Z]+"#, options: .regularExpression)!] == word {
+						let returnType = word.components(separatedBy: ":").last!.trimmingCharacters(in: .whitespacesAndNewlines)
+						
+						if !returnType.isTypeAnnotation && returnType != "VOID" {
+							return (nil, .init(type: .panic, description: "Return type should be any of type values (STRING, NUMBER, etc) or VOID.", line: lineNumber, word: wordNumber))
+						}
+						
+						let name = word.components(separatedBy: "(")[0]
+						
+						let argumentParts = word.components(separatedBy: "(")[1].components(separatedBy: ")")[0].components(separatedBy: ",")
+						
+						var arguments = [GBFunctionArgumentDefinition]()
+						
+						if !argumentParts[0].isEmpty {
+							for argumentPart in argumentParts {
+								let parts = argumentPart.components(separatedBy: ":")
+								
+								if parts.count != 2 || !parts[0].isPlainText || !parts[1].isTypeAnnotation {
+									return (nil, .init(type: .panic, description: "Invalid argument \"\(argumentPart)\" in function definition.", line: lineNumber, word: wordNumber))
+								}
+								
+								arguments.append(GBFunctionArgumentDefinition(name: parts[0], type: .init(rawValue: parts[1])!))
+							}
+						}
+						
+						currentLine.append(.function_definition(.init(name: name, returnType: .init(rawValue: returnType)!, arguments: arguments)))
+					} else {
+						return (nil, .init(type: .panic, description: "Invalid token.", line: lineNumber, word: wordNumber))
+					}
+				} else if word.range(of: #"[a-zA-Z:]+\([a-zA-Z,0-9\"/: \^&$.?!]*\)"#, options: .regularExpression) != nil  && expectsCodeBlock {
+					if word[word.range(of: #"[a-zA-Z:]+\([a-zA-Z,0-9\"/: \^&$.?!]*\)"#, options: .regularExpression)!] == word {
 						let name = word.components(separatedBy: "(")[0]
 						
 						let argumentParts = word.components(separatedBy: "(")[1].dropLast().components(separatedBy: ",")
 						
 						var arguments = [GBFunctionArgument]()
-						
 						if !argumentParts[0].isEmpty {
 							for argumentPart in argumentParts {
 								if argumentPart.isString {
@@ -202,411 +480,45 @@ class GBParser {
 								} else if argumentPart.isPlainText {
 									arguments.append(.init(value: argumentPart, type: .variable))
 								} else {
-									return (nil, .init(type: .parsing, description: "Unexpected token: \(word).", line: lineNumber, word: wordNumber))
+									return (nil, .init(type: .panic, description: "Unexpected token: \(argumentPart).", line: lineNumber, word: wordNumber))
 								}
 							}
 						}
 						
 						currentLine.append(.function_invocation(.init(name: name, arguments: arguments)))
-					} else if uppercased == "/IF" {
-						if blocks.last == .IF {
-							if codeBlocks.count == 1 {
-								currentLine.append(.code_block(codeBlocks[0]))
-							} else {
-								codeBlocks[codeBlocks.endIndex - 2].append([.code_block(codeBlocks.last!)])
-							}
-							
-							blocks.removeLast()
-							codeBlocks.removeLast()
-							
-							expectsCodeBlock = blocks.count != 0
-						} else {
-							return (nil, .init(type: .parsing, description: "Ending if construction before starting one.", line: lineNumber, word: wordNumber))
-						}
-					} else if uppercased == "/NAMESPACE" {
-						if blocks.last == .NAMESPACE {
-							if codeBlocks.count == 1 {
-								currentLine.append(.code_block(codeBlocks[0]))
-							} else {
-								codeBlocks[codeBlocks.endIndex - 2].append([.code_block(codeBlocks.last!)])
-							}
-							
-							blocks.removeLast()
-							codeBlocks.removeLast()
-							
-							expectsCodeBlock = blocks.count != 0
-						} else {
-							return (nil, .init(type: .parsing, description: "Ending if construction before starting one.", line: lineNumber, word: wordNumber))
-						}
-					} else if uppercased == "/WHILE" {
-						if blocks.last == .WHILE {
-							if codeBlocks.count == 1 {
-								currentLine.append(.code_block(codeBlocks[0]))
-							} else {
-								codeBlocks[codeBlocks.endIndex - 2].append([.code_block(codeBlocks.last!)])
-							}
-							
-							blocks.removeLast()
-							codeBlocks.removeLast()
-							
-							expectsCodeBlock = blocks.count != 0
-						} else {
-							return (nil, .init(type: .parsing, description: "Ending while construction before starting one.", line: lineNumber, word: wordNumber))
-						}
-					} else if uppercased == "/STRUCT" {
-						if blocks.last == .STRUCT {
-							if codeBlocks.count == 1 {
-								currentLine.append(.code_block(codeBlocks[0]))
-							} else {
-								codeBlocks[codeBlocks.endIndex - 2].append([.code_block(codeBlocks.last!)])
-							}
-							
-							blocks.removeLast()
-							codeBlocks.removeLast()
-							
-							expectsCodeBlock = blocks.count != 0
-						} else {
-							return (nil, .init(type: .parsing, description: "Ending structure before starting one.", line: lineNumber, word: wordNumber))
-						}
-					} else if uppercased == "/FN" {
-						if blocks.last == .FUNCTION {
-							if codeBlocks.count == 1 {
-								currentLine.append(.code_block(codeBlocks[0]))
-							} else {
-								codeBlocks[codeBlocks.endIndex - 2].append([.code_block(codeBlocks.last!)])
-							}
-							
-							blocks.removeLast()
-							codeBlocks.removeLast()
-							
-							expectsCodeBlock = blocks.count != 0
-						} else {
-							return (nil, .init(type: .parsing, description: "Ending function before starting one.", line: lineNumber, word: wordNumber))
-						}
 					} else {
-						return (nil, .init(type: .parsing, description: "Unexpected token: \(word).", line: lineNumber, word: wordNumber))
+						return (nil, .init(type: .panic, description: "Invalid token: \(word).", line: lineNumber, word: wordNumber))
 					}
-				} else {
-					if hasStartedLogicalExpression {
-						var word = word
-						var hasEnding = false
-						
-						if word == "#" {
-							hasStartedLogicalExpression = false
-							currentLine.append(.logical_expression(.init(logicalExpressionElements, storage: storage)))
-							logicalExpressionElements = []
-							continue
-						}
-						
-						if word.hasSuffix("#") {
-							hasStartedLogicalExpression = false
-							hasEnding = true
-							word = word.replacingOccurrences(of: "#", with: "")
-						}
-						
-						if word.isLogicalOperator && !lastWasLogicalOperator {
-							if word == "==" {
-								logicalExpressionElements.append(.equals)
-							} else if word == "||" {
-								logicalExpressionElements.append(.or)
-							} else if word == "&&" {
-								logicalExpressionElements.append(.and)
-							} else if word == ">" {
-								logicalExpressionElements.append(.higherThan)
-							} else if word == "<" {
-								logicalExpressionElements.append(.lowerThan)
-							} else if word == "!=" {
-								logicalExpressionElements.append(.not_equals)
-							}
-							
-							lastWasLogicalOperator = true
-						} else if word.isBool && lastWasLogicalOperator {
-							logicalExpressionElements.append(.value(.bool(Bool(word)!)))
-							lastWasLogicalOperator = false
-						} else if word.isNumber && lastWasLogicalOperator {
-							logicalExpressionElements.append(.value(.number(Float(word)!)))
-							lastWasLogicalOperator = false
-						} else if word.isString && lastWasLogicalOperator {
-							logicalExpressionElements.append(.value(.string(word.replacingOccurrences(of: "\"", with: ""))))
-							lastWasLogicalOperator = false
-						} else if word.isPlainText && lastWasLogicalOperator {
-							logicalExpressionElements.append(.variable(word))
-							lastWasLogicalOperator = false
-						} else {
-							return (nil, .init(type: .parsing, description: "Invalid element in logical epxression: \(word).", line: lineNumber, word: wordNumber))
-						}
-						
-						if hasEnding {
-							currentLine.append(.logical_expression(.init(logicalExpressionElements, storage: storage)))
-							logicalExpressionElements = []
-						}
-					} else if word == "#" || word.hasPrefix("#") || word.hasSuffix("#") {
-						if hasStartedLogicalExpression && word == "#" {
-							currentLine.append(.logical_expression(.init(logicalExpressionElements, storage: storage)))
-							hasStartedLogicalExpression = false
-							logicalExpressionElements = []
-						} else if !hasStartedLogicalExpression && word == "#" {
-							hasStartedLogicalExpression = true
-						} else if hasStartedLogicalExpression && word.hasSuffix("#") {
-							let word = word.replacingOccurrences(of: "#", with: "")
-							
-							if word.isNumber && lastWasLogicalOperator {
-								logicalExpressionElements.append(.value(.number(Float(word)!)))
-								lastWasLogicalOperator = false
-							} else if word.isString && lastWasLogicalOperator {
-								logicalExpressionElements.append(.value(.string(word.replacingOccurrences(of: "\"", with: ""))))
-								lastWasLogicalOperator = false
-							} else if word.isPlainText && lastWasLogicalOperator {
-								logicalExpressionElements.append(.variable(word))
-								lastWasLogicalOperator = false
-							} else {
-								return (nil, .init(type: .parsing, description: "Invalid element in logical epxression: \(word).", line: lineNumber, word: wordNumber))
-							}
-							
-							currentLine.append(.logical_expression(.init(logicalExpressionElements, storage: storage)))
-							hasStartedLogicalExpression = false
-							logicalExpressionElements = []
-						} else if !hasStartedLogicalExpression && word.hasPrefix("#") {
-							hasStartedLogicalExpression = true
-							
-							let word = word.replacingOccurrences(of: "#", with: "")
-							
-							if word.isNumber && lastWasLogicalOperator {
-								logicalExpressionElements.append(.value(.number(Float(word)!)))
-								lastWasLogicalOperator = false
-							} else if word.isString && lastWasLogicalOperator {
-								logicalExpressionElements.append(.value(.string(word.replacingOccurrences(of: "\"", with: ""))))
-								lastWasLogicalOperator = false
-							} else if word.isPlainText && lastWasLogicalOperator {
-								logicalExpressionElements.append(.variable(word))
-								lastWasLogicalOperator = false
-							} else {
-								return (nil, .init(type: .parsing, description: "Invalid element in logical epxression: \(word).", line: lineNumber, word: wordNumber))
-							}
-						} else {
-							return (nil, .init(type: .parsing, description: "Invalid arrangment of logical expression sign (#): \(word).", line: lineNumber, word: wordNumber))
-						}
-					} else if word == "<" || word.hasPrefix("<") {
-						if !hasStartedEquation {
-							hasStartedEquation = true
-							
-							if word.hasPrefix("<") {
-								let withoutSymbol = word.replacingOccurrences(of: "<", with: "")
-								
-								if withoutSymbol.isNumber {
-									equation.append(.number(Float(withoutSymbol)!))
-								} else if withoutSymbol.isPlainText {
-									equation.append(.variable(withoutSymbol))
-								} else {
-									return (nil, .init(type: .parsing, description: "Invalid arrangment in equation: \(word).", line: lineNumber, word: wordNumber))
-								}
-																
-								lastWasNumber = true
-							}
-						} else {
-							return (nil, .init(type: .parsing, description: "Started equation before ending last.", line: lineNumber, word: wordNumber))
-						}
-					} else if word == ">" || word.hasSuffix(">") {
-						if hasStartedEquation {
-							hasStartedEquation = false
-							
-							if word.hasSuffix(">") {
-								let withoutSymbol = word.replacingOccurrences(of: ">", with: "")
-								
-								if withoutSymbol.isNumber {
-									equation.append(.number(Float(withoutSymbol)!))
-								} else if withoutSymbol.isPlainText {
-									equation.append(.variable(withoutSymbol))
-								} else {
-									return (nil, .init(type: .parsing, description: "Invalid arrangment in equation: \(word).", line: lineNumber, word: wordNumber))
-								}
-								
-								lastWasNumber = false
-							}
-							
-							currentLine.append(.equation(.init(equation, storage: storage)))
-							equation = []
-						} else {
-							return (nil, .init(type: .parsing, description: "Ending equation before starting one.", line: lineNumber, word: wordNumber))
-						}
-					} else if hasStartedEquation {
-						if word.isNumber {
-							if !lastWasNumber {
-								equation.append(.number(Float(word)!))
-								lastWasNumber = true
-							} else {
-								return (nil, .init(type: .parsing, description: "Invalid arrangment in equation: \(word).", line: lineNumber, word: wordNumber))
-							}
-						} else if word.isPlainText {
-							if !lastWasNumber {
-								equation.append(.variable(word))
-								lastWasNumber = true
-							} else {
-								return (nil, .init(type: .parsing, description: "Invalid arrangment in equation: \(word).", line: lineNumber, word: wordNumber))
-							}
-						} else if word.isMathSymbol {
-							if lastWasNumber {
-								if word == "+" {
-									equation.append(.plus)
-								} else if word == "*" {
-									equation.append(.multiply)
-								} else if word == "/" {
-									equation.append(.divide)
-								} else if word == "-" {
-									equation.append(.minus)
-								}
-								
-								lastWasNumber = false
-							} else {
-								return (nil, .init(type: .parsing, description: "Invalid arrangment in equation: \(word).", line: lineNumber, word: wordNumber))
-							}
-						} else {
-							return (nil, .init(type: .parsing, description: "Invalid word in equation: \(word).", line: lineNumber, word: wordNumber))
-						}
-					} else if word.range(of: #"\([A-Z]+\)[a-zA-Z"1-9/~$]+"#, options: .regularExpression) != nil {
-						if word[word.range(of: #"\([A-Z]+\)[a-zA-Z"1-9/~$]+"#, options: .regularExpression)!] == word {
-							if let type = word.slice(from: "(", to: ")") {
-								if let _ = GBToken.ValueType(rawValue: type) {
-									let value = word.components(separatedBy: ")")[1]
-									
-									if value.isPointer {
-										currentLine.append(.casted(.pointer(value.replacingOccurrences(of: "$", with: "")), .init(rawValue: type)!))
-									} else if value.isString {
-										currentLine.append(.casted(.string(value.replacingOccurrences(of: "\"", with: "")), .init(rawValue: type)!))
-									} else if value.isNumber {
-										currentLine.append(.casted(.string(value.replacingOccurrences(of: "\"", with: "")), .init(rawValue: type)!))
-									} else if value.isBool {
-										currentLine.append(.casted(.string(value.replacingOccurrences(of: "\"", with: "")), .init(rawValue: type)!))
-									} else if value.isURL {
-										currentLine.append(.casted(.string(value.replacingOccurrences(of: "\"", with: "")), .init(rawValue: type)!))
-									} else {
-										return (nil, .init(type: .parsing, description: "Invalid token.", line: lineNumber, word: wordNumber))
-									}
-								} else {
-									return (nil, .init(type: .parsing, description: "Expected type annotation (NUMBER, STRING, etc), got \(type).", line: lineNumber, word: wordNumber))
-								}
-							} else {
-								return (nil, .init(type: .parsing, description: "Invalid token.", line: lineNumber, word: wordNumber))
-							}
-						} else {
-							return (nil, .init(type: .parsing, description: "Invalid token.", line: lineNumber, word: wordNumber))
-						}
-					} else if word.range(of: #"[a-zA-Z]+\([a-zA-Z:,]*\):[A-Z]+"#, options: .regularExpression) != nil {
-						if word[word.range(of: #"[a-zA-Z]+\([a-zA-Z:,]*\):[A-Z]+"#, options: .regularExpression)!] == word {
-							let returnType = word.components(separatedBy: ":").last!.trimmingCharacters(in: .whitespacesAndNewlines)
-							
-							if !returnType.isTypeAnnotation && returnType != "VOID" {
-								return (nil, .init(type: .parsing, description: "Return type should be any of type values (STRING, NUMBER, etc) or VOID.", line: lineNumber, word: wordNumber))
-							}
-							
-							let name = word.components(separatedBy: "(")[0]
-							
-							let argumentParts = word.components(separatedBy: "(")[1].components(separatedBy: ")")[0].components(separatedBy: ",")
-							
-							var arguments = [GBFunctionArgumentDefinition]()
-							
-							if !argumentParts[0].isEmpty {
-								for argumentPart in argumentParts {
-									let parts = argumentPart.components(separatedBy: ":")
-									
-									if parts.count != 2 || !parts[0].isPlainText || !parts[1].isTypeAnnotation {
-										return (nil, .init(type: .parsing, description: "Invalid argument \"\(argumentPart)\" in function definition.", line: lineNumber, word: wordNumber))
-									}
-									
-									arguments.append(GBFunctionArgumentDefinition(name: parts[0], type: .init(rawValue: parts[1])!))
-								}
-							}
-							
-							currentLine.append(.function_definition(.init(name: name, returnType: .init(rawValue: returnType)!, arguments: arguments)))
-						} else {
-							return (nil, .init(type: .parsing, description: "Invalid token.", line: lineNumber, word: wordNumber))
-						}
-					} else if word.range(of: #"[a-zA-Z:]+\([a-zA-Z,0-9\"/: \^&$.?!]*\)"#, options: .regularExpression) != nil  && expectsCodeBlock {
-						if word[word.range(of: #"[a-zA-Z:]+\([a-zA-Z,0-9\"/: \^&$.?!]*\)"#, options: .regularExpression)!] == word {
-							let name = word.components(separatedBy: "(")[0]
-							
-							let argumentParts = word.components(separatedBy: "(")[1].dropLast().components(separatedBy: ",")
-							
-							var arguments = [GBFunctionArgument]()
-							if !argumentParts[0].isEmpty {
-								for argumentPart in argumentParts {
-									if argumentPart.isString {
-										arguments.append(.init(value: argumentPart.replacingOccurrences(of: "\"", with: ""), type: .string))
-									} else if argumentPart.isBool {
-										arguments.append(.init(value: argumentPart, type: .bool))
-									} else if argumentPart.isNumber {
-										arguments.append(.init(value: argumentPart, type: .number))
-									} else if argumentPart.isPlainText {
-										arguments.append(.init(value: argumentPart, type: .variable))
-									} else {
-										return (nil, .init(type: .parsing, description: "Unexpected token: \(argumentPart).", line: lineNumber, word: wordNumber))
-									}
-								}
-							}
-							
-							currentLine.append(.function_invocation(.init(name: name, arguments: arguments)))
-						} else {
-							return (nil, .init(type: .parsing, description: "Invalid token: \(word).", line: lineNumber, word: wordNumber))
-						}
-					} else if word.isString {
-						currentLine.append(.string(word.replacingOccurrences(of: "\"", with: "")))
-					} else if word.isBool {
-						currentLine.append(.bool(Bool(word)!))
-					} else if word.isTypeAnnotation {
-						currentLine.append(.variable_type(.init(rawValue: word)!))
-					} else if word.isNumber {
-						currentLine.append(.number(Float(word)!))
-					} else if word.isPointer {
-						currentLine.append(.pointer(word.replacingOccurrences(of: "$", with: "")))
-					} else if word.isPlainText {
+				} else if word.isString {
+					currentLine.append(.string(word.replacingOccurrences(of: "\"", with: "")))
+				} else if word.isBool {
+					currentLine.append(.bool(Bool(word)!))
+				} else if word.isTypeAnnotation {
+					currentLine.append(.variable_type(.init(rawValue: word)!))
+				} else if word.isNumber {
+					currentLine.append(.number(Float(word)!))
+				} else if word.isPointer {
+					currentLine.append(.pointer(word.replacingOccurrences(of: "$", with: "")))
+				} else if word.isPlainText {
+					if !word.isEmpty {
 						currentLine.append(.plain_text(word))
-					} else if word.isURL {
-						currentLine.append(.url(URL(string: word)!))
-					} else {
-						return (nil, .init(type: .parsing, description: "Unexpected token: \(word).", line: lineNumber, word: wordNumber))
 					}
-				}
-			}
-			
-			if !currentLine.isEmpty {
-				if expectsCodeBlock {
-					var firstIsKeyword = false
-					
-					switch currentLine.first! {
-						case .if_keyword, .function_keyword, .while_keyword, .namespace_keyword, .struct_keyword:
-							firstIsKeyword = true
-						default:
-							firstIsKeyword = false
-					}
-					
-					if blocks.count > 1 {
-						if firstIsKeyword {
-							codeBlocks[codeBlocks.endIndex - 2].append(currentLine)
-						} else {
-							codeBlocks[codeBlocks.endIndex - 1].append(currentLine)
-						}
-					} else if blocks.count == 1 {
-						if firstIsKeyword {
-							result.append(currentLine)
-						} else {
-							codeBlocks[codeBlocks.endIndex - 1].append(currentLine)
-						}
-					} else {
-						result.append(currentLine)
-					}
+				} else if word.isURL {
+					currentLine.append(.url(URL(string: word)!))
 				} else {
-					result.append(currentLine)
+					return (nil, .init(type: .panic, description: "Unexpected token: \(word).", line: lineNumber, word: wordNumber))
 				}
 			}
 		}
 		
 		if expectsCodeBlock {
-			return (nil, .init(type: .parsing, description: "Didn't finish code block."))
+			return (nil, .init(type: .panic, description: "Didn't finish code block."))
 		}
 		
 		return (result, nil)
 	}
 }
+
 
 extension String {
 	func replaceKeywordCharacters() -> String {
@@ -684,7 +596,7 @@ extension String {
 				
 				newElement.replaceSubrange(range, with: result)
 			}
-
+			
 			return newElement
 		}
 		

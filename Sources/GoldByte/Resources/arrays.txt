@@ -1,53 +1,53 @@
-STRUCT Array
-	VAR NUMBER maxIndex 0
-	VAR STRING name "undefined"
+struct Array {
+	var NUMBER maxIndex 0
+	var STRING name "undefined"
 
-	FN init(name:STRING,count:NUMBER):VOID
-		IF # count < 1 #
-			ERROR "Count must be at least 1."
-		/IF
+	func init(name:STRING,count:NUMBER):VOID {
+		if # count < 1 # {
+			throw "Count must be at least 1."
+		}
 
-		SET $self::maxIndex <count - 1>
-		SET $self::name name
-	/FN
+		set $self::maxIndex |count - 1|
+		set $self::name name
+	}
 
-	FN insert(value:ANY,index:NUMBER):VOID
-		VAR NUMBER maxIndex 0
-		SET $maxIndex self::maxIndex
+	func insert(value:ANY,index:NUMBER):VOID {
+		var NUMBER maxIndex 0
+		set $maxIndex self::maxIndex
 
-		IF # -1 < index && maxIndex < index #
-			ERROR "Index out of range."
-		/IF
+		if # -1 < index && maxIndex < index # {
+			throw "Index out of range."
+		}
 
-		ENABLE "DYN_VAR_MAKE"
-		ENABLE "DYN_VAR_READ"
+		enable "dyn_var_make"
+		enable "dyn_var_read"
 
-		VAR STRING arrayCell "%(self::name) %(index)"
-		DYN_VAR_MAKE STRING arrayCell value
+		var STRING arrayCell "%(self::name) %(index)"
+		dyn_var_make STRING arrayCell value
 
-		DISABLE "DYN_VAR_MAKE"
-		DISABLE "DYN_VAR_READ"
-	/FN
+		disable "dyn_var_make"
+		disable "dyn_var_read"
+	}
 
-	FN read(index:NUMBER):STRING
-		VAR NUMBER maxIndex 0
-		SET $maxIndex self::maxIndex
+	func read(index:NUMBER):STRING {
+		var NUMBER maxIndex 0
+		set $maxIndex self::maxIndex
 
-		IF # -1 < index && maxIndex < index #
-			ERROR "Index out of range."
-		/IF
+		if # -1 < index && maxIndex < index # {
+			throw "Index out of range."
+		}
 
-		ENABLE "DYN_VAR_MAKE"
-		ENABLE "DYN_VAR_READ"
+		enable "dyn_var_make"
+		enable "dyn_var_read"
 
-		VAR STRING arrayCell "%(self::name) %(index)"
-		VAR STRING result ""
-		DYN_VAR_READ STRING arrayCell $result
+		var STRING arrayCell "%(self::name) %(index)"
+		var STRING result ""
+		dyn_var_read STRING arrayCell $result
 
-		DISABLE "DYN_VAR_MAKE"
-		DISABLE "DYN_VAR_READ"
+		disable "dyn_var_make"
+		disable "dyn_var_read"
 
-		RETURN result
-	/FN
-/STRUCT
+		return result
+	}
+}
 

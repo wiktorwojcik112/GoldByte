@@ -29,7 +29,7 @@ struct GBEquation {
 				let variable = storage[key]
 				
 				if variable.type != .number {
-					return (nil, .init(type: .equation, description: "Variable \"\(key)\" is not a number."))
+					return (nil, .init(type: .panic, description: "Variable \"\(key)\" is not a number."))
 				}
 				
 				copy[n] = .number(Float(variable.value)!)
@@ -76,7 +76,7 @@ struct GBEquation {
 						if currentNumber != 0 {
 							result /= currentNumber
 						} else {
-							return (nil, .init(type: .equation, description: "Can't divide by 0."))
+							return (nil, .init(type: .panic, description: "Can't divide by 0."))
 						}
 				}
 				

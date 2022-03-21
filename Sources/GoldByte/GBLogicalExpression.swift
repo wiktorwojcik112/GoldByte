@@ -29,10 +29,10 @@ struct GBLogicalExpression {
 					} else if variable.type == .string {
 						withoutVariables.append(.value(.string(variable.value)))
 					} else {
-						return (nil, .init(type: .logical, description: "Invalid variable type."))
+						return (nil, .init(type: .panic, description: "Invalid variable type."))
 					}
 				} else {
-					return (nil, .init(type: .logical, description: "Variable of name \"\(key)\" doesn't exist."))
+					return (nil, .init(type: .panic, description: "Variable of name \"\(key)\" doesn't exist."))
 				}
 			} else {
 				withoutVariables.append(element)
@@ -62,11 +62,11 @@ struct GBLogicalExpression {
 									if case .number(let currentValue) = currentElementValue {
 										comparisonsEvaluated.append(.value(.bool(lastValue < currentValue)))
 									} else {
-										return (nil, .init(type: .logical, description: "Expected number in comparison."))
+										return (nil, .init(type: .panic, description: "Expected number in comparison."))
 									}
 								}
 							} else {
-								return (nil, .init(type: .logical, description: "Expected number in comparison."))
+								return (nil, .init(type: .panic, description: "Expected number in comparison."))
 							}
 						}
 					} else if lastComparison! == .higherThan {
@@ -76,11 +76,11 @@ struct GBLogicalExpression {
 									if case .number(let currentValue) = currentElementValue {
 										comparisonsEvaluated.append(.value(.bool(lastValue > currentValue)))
 									} else {
-										return (nil, .init(type: .logical, description: "Expected number in comparison."))
+										return (nil, .init(type: .panic, description: "Expected number in comparison."))
 									}
 								}
 							} else {
-								return (nil, .init(type: .logical, description: "Expected number in comparison."))
+								return (nil, .init(type: .panic, description: "Expected number in comparison."))
 							}
 						}
 					}
@@ -102,7 +102,7 @@ struct GBLogicalExpression {
 					lastComparison = element
 					allowsOperator = true
 				} else {
-					return (nil, .init(type: .logical, description: "Invalid arrangement in logical expression. Got \"\(element)\"."))
+					return (nil, .init(type: .panic, description: "Invalid arrangement in logical expression. Got \"\(element)\"."))
 				}
 				
 				lastWasElement = false

@@ -19,7 +19,7 @@ enum Option {
 var options: Option? = nil
 
 if CommandLine.arguments.count <= 1 {
-	let shell = GBShell()
+	let shell = GBREPL()
 	shell.start()
 } else {
 	if CommandLine.arguments[1] == "link" {

@@ -1,11 +1,11 @@
-USE "strings"
-USE "arrays"
-USE "math"
-USE "vectors"
+use "strings"
+use "arrays"
+use "math"
+use "vectors"
 
-FN input(text:STRING):STRING
-	VAR STRING __temporary__ ""
-	PRINT text
-	INPUT STRING $__temporary__ true
-	RETURN __temporary__
-/FN
+func input(text:STRING):STRING {
+	var STRING __temporary__ ""
+	print text
+	input STRING $__temporary__ true
+	return __temporary__
+}

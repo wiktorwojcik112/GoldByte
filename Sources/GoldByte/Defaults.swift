@@ -10,9 +10,9 @@ import Foundation
 extension GBCore {
 	func getMacros(withStorage storage: GBStorage) -> [String: GBMacroAction] {
 		GBStorage.buildMacros {
-			GBMacro("NEW") { arguments, line, _ in
+			GBMacro("new") { arguments, line, _ in
 				if arguments.count != 2 {
-					return .init(type: .macro, description: "Expected 2 arguments, got \(arguments.count).", line: line, word: 0)
+					return .init(type: .panic, description: "Expected 2 arguments, got \(arguments.count).", line: line, word: 0)
 				}
 				
 				var structureNamespace = ""
@@ -31,16 +31,16 @@ extension GBCore {
 						structureCode = storage.structs[name]!
 						structureNamespace = namespaces.joined(separator: "")
 					} else {
-						return .init(type: .macro, description: "Structure with name \"\(id)\" doesn't exist.", line: line, word: 1)
+						return .init(type: .panic, description: "Structure with name \"\(id)\" doesn't exist.", line: line, word: 1)
 					}
 				} else {
-					return .init(type: .macro, description: "Expected value of type STRING or plain text.", line: line, word: 1)
+					return .init(type: .panic, description: "Expected value of type STRING or plain text.", line: line, word: 1)
 				}
 				
 				if case .string(let name) = arguments[1] {
 					instanceName = name
 				} else {
-					return .init(type: .macro, description: "Expected value of type STRING.", line: line, word: 2)
+					return .init(type: .panic, description: "Expected value of type STRING.", line: line, word: 2)
 				}
 				
 				if structureNamespace == "" {
@@ -60,9 +60,9 @@ extension GBCore {
 				return nil
 			}
 			
-			GBMacro("MODULO") { arguments, line, _ in
+			GBMacro("modulo") { arguments, line, _ in
 				if arguments.count != 3 {
-					return .init(type: .macro, description: "Expected 3 arguments, got \(arguments.count).", line: line, word: 0)
+					return .init(type: .panic, description: "Expected 3 arguments, got \(arguments.count).", line: line, word: 0)
 				}
 				
 				var variable = ""
@@ -74,25 +74,25 @@ extension GBCore {
 						if storage[value].type == .number {
 							variable = value
 						} else {
-							return .init(type: .macro, description: "Variable \"\(value)\" should be of type NUMBER.", line: line, word: 0)
+							return .init(type: .panic, description: "Variable \"\(value)\" should be of type NUMBER.", line: line, word: 0)
 						}
 					} else {
-						return .init(type: .macro, description: "Variable \"\(value)\" doesn't exist.", line: line, word: 0)
+						return .init(type: .panic, description: "Variable \"\(value)\" doesn't exist.", line: line, word: 0)
 					}
 				} else {
-					return .init(type: .macro, description: "Invalid argument type. Expected pointer, got \"\(arguments[0].type)\"", line: line, word: 0)
+					return .init(type: .panic, description: "Invalid argument type. Expected pointer, got \"\(arguments[0].type)\"", line: line, word: 0)
 				}
 				
 				if case .number(let value) = arguments[1] {
 					number = Int(value)
 				} else {
-					return .init(type: .macro, description: "Invalid argument type. Expected NUMBER, got \"\(arguments[1].type)\"", line: line, word: 0)
+					return .init(type: .panic, description: "Invalid argument type. Expected NUMBER, got \"\(arguments[1].type)\"", line: line, word: 0)
 				}
 				
 				if case .number(let value) = arguments[2] {
 					modulo = Int(value)
 				} else {
-					return .init(type: .macro, description: "Invalid argument type. Expected NUMBER, got \"\(arguments[2].type)\"", line: line, word: 0)
+					return .init(type: .panic, description: "Invalid argument type. Expected NUMBER, got \"\(arguments[2].type)\"", line: line, word: 0)
 				}
 				
 				storage[variable] = .init(value: String(Float(number % modulo)), type: .number, scope: storage[variable].scope)
@@ -100,9 +100,9 @@ extension GBCore {
 				return nil
 			}
 			
-			GBMacro("DYN_VAR_MAKE") { arguments, line, _ in
+			GBMacro("dyn_var_make") { arguments, line, _ in
 				if arguments.count != 3 {
-					return .init(type: .macro, description: "Expected 3 arguments, got \(arguments.count).", line: line, word: 0)
+					return .init(type: .panic, description: "Expected 3 arguments, got \(arguments.count).", line: line, word: 0)
 				}
 				
 				var name = ""
@@ -113,16 +113,16 @@ extension GBCore {
 					if let convertedType = GBStorage.ValueType(rawValue: value.uppercased()) {
 						type = convertedType
 					} else {
-						return .init(type: .macro, description: "Invalid type. Expected a type, for example: NUMBER, STRING or BOOL.", line: line, word: 0)
+						return .init(type: .panic, description: "Invalid type. Expected a type, for example: NUMBER, STRING or BOOL.", line: line, word: 0)
 					}
 				} else {
-					return .init(type: .macro, description: "Invalid value: \(arguments[0])", line: line, word: 0)
+					return .init(type: .panic, description: "Invalid value: \(arguments[0])", line: line, word: 0)
 				}
 				
 				if case .string(let value) = arguments[1] {
 					name = value
 				} else {
-					return .init(type: .macro, description: "Invalid value: \(arguments[1])", line: line, word: 0)
+					return .init(type: .panic, description: "Invalid value: \(arguments[1])", line: line, word: 0)
 				}
 				
 				if case .string(let string) = arguments[2] {
@@ -132,7 +132,7 @@ extension GBCore {
 				} else if case .bool(let bool) = arguments[2] {
 					value = String(bool)
 				} else {
-					return .init(type: .macro, description: "Invalid value: \(arguments[2])", line: line, word: 0)
+					return .init(type: .panic, description: "Invalid value: \(arguments[2])", line: line, word: 0)
 				}
 				
 				storage[name] = .init(value: value, type: type, scope: .global)
@@ -140,9 +140,9 @@ extension GBCore {
 				return nil
 			}
 			
-			GBMacro("DYN_VAR_READ") { arguments, line, _ in
+			GBMacro("dyn_var_read") { arguments, line, _ in
 				if arguments.count != 3 {
-					return .init(type: .macro, description: "Expected 3 arguments, got \(arguments.count).", line: line, word: 0)
+					return .init(type: .panic, description: "Expected 3 arguments, got \(arguments.count).", line: line, word: 0)
 				}
 				
 				var name = ""
@@ -153,20 +153,20 @@ extension GBCore {
 					if let convertedType = GBStorage.ValueType(rawValue: value.uppercased()) {
 						type = convertedType
 					} else {
-						return .init(type: .macro, description: "Invalid type. Expected a type, for example: NUMBER, STRING or BOOL.", line: line, word: 0)
+						return .init(type: .panic, description: "Invalid type. Expected a type, for example: NUMBER, STRING or BOOL.", line: line, word: 0)
 					}
 				} else {
-					return .init(type: .macro, description: "Invalid value: \(arguments[0])", line: line, word: 0)
+					return .init(type: .panic, description: "Invalid value: \(arguments[0])", line: line, word: 0)
 				}
 				
 				if case .string(let value) = arguments[1] {
 					if storage.variableExists(value) {
 						name = value
 					} else {
-						return .init(type: .macro, description: "Variable \"\(value)\" doesn't exist.", line: line, word: 0)
+						return .init(type: .panic, description: "Variable \"\(value)\" doesn't exist.", line: line, word: 0)
 					}
 				} else {
-					return .init(type: .macro, description: "Invalid value: \(arguments[1])", line: line, word: 0)
+					return .init(type: .panic, description: "Invalid value: \(arguments[1])", line: line, word: 0)
 				}
 				
 				if case .pointer(let value) = arguments[2] {
@@ -174,15 +174,15 @@ extension GBCore {
 						let variable = storage[value]
 						
 						if variable.type != type {
-							return .init(type: .macro, description: "Type of variable is and specified type are not the same.", line: line, word: 0)
+							return .init(type: .panic, description: "Type of variable is and specified type are not the same.", line: line, word: 0)
 						}
 						
 						pointer = value
 					} else {
-						return .init(type: .macro, description: "Variable \"\(value)\" doesn't exist.", line: line, word: 0)
+						return .init(type: .panic, description: "Variable \"\(value)\" doesn't exist.", line: line, word: 0)
 					}
 				} else {
-					return .init(type: .macro, description: "Invalid value: \(arguments[2])", line: line, word: 0)
+					return .init(type: .panic, description: "Invalid value: \(arguments[2])", line: line, word: 0)
 				}
 				
 				storage[pointer] = .init(value: storage[name].value, type: type, scope: .global)
@@ -190,37 +190,37 @@ extension GBCore {
 				return nil
 			}
 			
-			GBMacro("ENABLE") { arguments, line, _ in
+			GBMacro("enable") { arguments, line, _ in
 				if arguments.count == 1 {
 					if case .string(let value) = arguments[0] {
 						storage.disabledMacros.remove(value)
 					} else {
-						return .init(type: .macro, description: "Expected STRING, got \(arguments[0].type).", line: line, word: 0)
+						return .init(type: .panic, description: "Expected STRING, got \(arguments[0].type).", line: line, word: 0)
 					}
 				} else {
-					return .init(type: .macro, description: "Expected 1 argument, got \(arguments.count).", line: line, word: 0)
+					return .init(type: .panic, description: "Expected 1 argument, got \(arguments.count).", line: line, word: 0)
 				}
 				
 				return nil
 			}
 			
-			GBMacro("DISABLE") { arguments, line, _ in
+			GBMacro("disable") { arguments, line, _ in
 				if arguments.count == 1 {
 					if case .string(let value) = arguments[0] {
 						storage.disabledMacros.insert(value)
 					} else {
-						return .init(type: .macro, description: "Expected STRING, got \(arguments[0].type).", line: line, word: 0)
+						return .init(type: .panic, description: "Expected STRING, got \(arguments[0].type).", line: line, word: 0)
 					}
 				} else {
-					return .init(type: .macro, description: "Expected 1 argument, got \(arguments.count).", line: line, word: 0)
+					return .init(type: .panic, description: "Expected 1 argument, got \(arguments.count).", line: line, word: 0)
 				}
 				
 				return nil
 			}
 			
-			GBMacro("USE") { arguments, line, _ in
+			GBMacro("use") { arguments, line, _ in
 				if arguments.count != 1 {
-					return .init(type: .macro, description: "Expected 1 argument, got \(arguments.count).", line: line, word: 0)
+					return .init(type: .panic, description: "Expected 1 argument, got \(arguments.count).", line: line, word: 0)
 				}
 				
 				if case .string(let value) = arguments[0] {
@@ -248,17 +248,17 @@ extension GBCore {
 					var isDirectory: ObjCBool = false
 					
 					if !FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) {
-						return .init(type: .macro, description: "Library doesn't exist.", line: line, word: 0)
+						return .init(type: .panic, description: "Library doesn't exist.", line: line, word: 0)
 					}
 					
 					if isDirectory.boolValue {
-						return .init(type: .macro, description: "Library can't be directory.", line: line, word: 0)
+						return .init(type: .panic, description: "Library can't be directory.", line: line, word: 0)
 					}
 					
 					if let code = String(data: FileManager.default.contents(atPath: url.path)!, encoding: .utf8) {
 						return self.load(with: code, filePath: url.path)
 					} else {
-						return .init(type: .macro, description: "File is empty.", line: line, word: 0)
+						return .init(type: .panic, description: "File is empty.", line: line, word: 0)
 					}
 				} else if case .url(let url) = arguments[0] {
 					let filePath = URL(fileURLWithPath: self.filePath).deletingLastPathComponent()
@@ -279,26 +279,26 @@ extension GBCore {
 					var isDirectory: ObjCBool = false
 					
 					if !FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) {
-						return .init(type: .macro, description: "Library doesn't exist.", line: line, word: 0)
+						return .init(type: .panic, description: "Library doesn't exist.", line: line, word: 0)
 					}
 					
 					if isDirectory.boolValue {
-						return .init(type: .macro, description: "Library can't be directory.", line: line, word: 0)
+						return .init(type: .panic, description: "Library can't be directory.", line: line, word: 0)
 					}
 					
 					if let code = String(data: FileManager.default.contents(atPath: url.path)!, encoding: .utf8) {
 						return self.load(with: code, filePath: url.path)
 					} else {
-						return .init(type: .macro, description: "File is empty.", line: line, word: 0)
+						return .init(type: .panic, description: "File is empty.", line: line, word: 0)
 					}
 				} else {
-					return .init(type: .macro, description: "Expected URL, got \(arguments[0].type).", line: line, word: 0)
+					return .init(type: .panic, description: "Expected URL, got \(arguments[0].type).", line: line, word: 0)
 				}
 			}
 			
-			GBMacro("FREE") { arguments, line, _ in
+			GBMacro("free") { arguments, line, _ in
 				if arguments.count != 1 {
-					return .init(type: .macro, description: "Expect 1 argument, got \(arguments.count).", line: line, word: 0)
+					return .init(type: .panic, description: "Expect 1 argument, got \(arguments.count).", line: line, word: 0)
 				}
 				
 				if case .pointer(let variable) = arguments[0] {
@@ -330,17 +330,17 @@ extension GBCore {
 						}
 						
 						if variablesCount == 0 && functionsCount == 0 {
-							return .init(type: .macro, description: "Object \"\(variable)\" doesn't exist.", line: line, word: 0)
+							return .init(type: .panic, description: "Object \"\(variable)\" doesn't exist.", line: line, word: 0)
 						}
 					}
 				} else {
-					return .init(type: .macro, description: "Expected POINTER, got \(arguments[0].type).", line: line, word: 0)
+					return .init(type: .panic, description: "Expected POINTER, got \(arguments[0].type).", line: line, word: 0)
 				}
 				
 				return nil
 			}
 			
-			GBMacro("RAND") { arguments, line, _ in
+			GBMacro("rand") { arguments, line, _ in
 				if arguments.count == 3 {
 					var variable = ""
 					var min: Float = 0
@@ -351,61 +351,73 @@ extension GBCore {
 							if storage[value].type == .number {
 								variable = value
 							} else {
-								return .init(type: .macro, description: "Variable \"\(value)\" should be of type NUMBER.", line: line, word: 0)
+								return .init(type: .panic, description: "Variable \"\(value)\" should be of type NUMBER.", line: line, word: 0)
 							}
 						} else {
-							return .init(type: .macro, description: "Variable \"\(value)\" doesn't exist.", line: line, word: 0)
+							return .init(type: .panic, description: "Variable \"\(value)\" doesn't exist.", line: line, word: 0)
 						}
 					} else {
-						return .init(type: .macro, description: "Invalid argument type. Expected pointer, got \"\(arguments[0].type)\"", line: line, word: 0)
+						return .init(type: .panic, description: "Invalid argument type. Expected pointer, got \"\(arguments[0].type)\"", line: line, word: 0)
 					}
 					
 					if case .number(let value) = arguments[1] {
 						min = value
 					} else {
-						return .init(type: .macro, description: "Invalid argument type. Expected NUMBER, got \"\(arguments[1].type)\"", line: line, word: 0)
+						return .init(type: .panic, description: "Invalid argument type. Expected NUMBER, got \"\(arguments[1].type)\"", line: line, word: 0)
 					}
 					
 					if case .number(let value) = arguments[2] {
 						max = value
 					} else {
-						return .init(type: .macro, description: "Invalid argument type. Expected NUMBER, got \"\(arguments[2].type)\"", line: line, word: 0)
+						return .init(type: .panic, description: "Invalid argument type. Expected NUMBER, got \"\(arguments[2].type)\"", line: line, word: 0)
 					}
 					
 					if min > max {
-						return .init(type: .macro, description: "Min number must be lower than max number.", line: line, word: 0)
+						return .init(type: .panic, description: "Min number must be lower than max number.", line: line, word: 0)
 					}
 					
 					let randomNumber = Int.random(in: Int(min)...Int(max))
 					
 					storage[variable] = .init(value: String(Float(randomNumber)), type: .number, scope: storage[variable].scope)
 				} else {
-					return .init(type: .macro, description: "Invalid number of arguments for RAND macro.", line: line, word: 0)
+					return .init(type: .panic, description: "Invalid number of arguments for RAND macro.", line: line, word: 0)
 				}
 				
 				return nil
 			}
 			
-			GBMacro("ERROR") { arguments, line, _ in
+			GBMacro("throw") { arguments, line, _ in
 				if arguments.count == 1 {
 					if case .string(let value) = arguments[0] {
-						return .init(type: .macro, description: value, line: line, word: 0)
+						return .init(type: .thrown, description: value, line: line, word: 0)
 					} else {
-						return .init(type: .macro, description: "Expected STRING, got \"\(arguments[0].type)\".", line: line, word: 0)
+						return .init(type: .thrown, description: "Expected STRING, got \"\(arguments[0].type)\".", line: line, word: 0)
 					}
 				} else {
-					return .init(type: .macro, description: "Invalid number of arguments for ERROR macro.", line: line, word: 0)
+					return .init(type: .panic, description: "Invalid number of arguments for ERROR macro.", line: line, word: 0)
 				}
 			}
 			
-			GBMacro("SET") { arguments, line, namespace in
+			GBMacro("panic") { arguments, line, _ in
+				if arguments.count == 1 {
+					if case .string(let value) = arguments[0] {
+						return .init(type: .panic, description: value, line: line, word: 0)
+					} else {
+						return .init(type: .panic, description: "Expected STRING, got \"\(arguments[0].type)\".", line: line, word: 0)
+					}
+				} else {
+					return .init(type: .panic, description: "Invalid number of arguments for ERROR macro.", line: line, word: 0)
+				}
+			}
+			
+			GBMacro("set") { arguments, line, namespace in
 				var modifiedVariable = ""
 				
 				var typeOfNewValue: GBStorage.ValueType = .null
 				var newValue = ""
 				
 				guard let modifiedVariableToken = arguments[safely: 0] else {
-					return .init(type: .macro, description: "Pointer to variable is required.", line: line, word: 0)
+					return .init(type: .panic, description: "Pointer to variable is required.", line: line, word: 0)
 				}
 				
 				if case .pointer(let key) = modifiedVariableToken {
@@ -428,14 +440,14 @@ extension GBCore {
 					if storage.variableExists(key) {
 						modifiedVariable = key
 					} else {
-						return .init(type: .macro, description: "Variable \"\(key)\" doesn't exist.", line: line, word: 0)
+						return .init(type: .panic, description: "Variable \"\(key)\" doesn't exist.", line: line, word: 0)
 					}
 				} else {
-					return .init(type: .macro, description: "Expected pointer, but got something else.", line: line, word: 0)
+					return .init(type: .panic, description: "Expected pointer, but got something else.", line: line, word: 0)
 				}
 				
 				guard let newValueToken = arguments[safely: 1] else {
-					return .init(type: .macro, description: "Pointer to variable is required.", line: line, word: 0)
+					return .init(type: .panic, description: "Pointer to variable is required.", line: line, word: 0)
 				}
 				
 				if case .number(let value) = newValueToken {
@@ -448,7 +460,7 @@ extension GBCore {
 					typeOfNewValue = .bool
 					newValue = String(value)
 				} else {
-					return .init(type: .macro, description: "Invalid type. Expected number, string or bool.", line: line, word: 0)
+					return .init(type: .panic, description: "Invalid type. Expected number, string or bool.", line: line, word: 0)
 				}
 				
 				let variable = self.storage[modifiedVariable]
@@ -456,13 +468,13 @@ extension GBCore {
 				if variable.type == typeOfNewValue {
 					self.storage[modifiedVariable] = .init(value: newValue, type: variable.type, scope: storage[modifiedVariable].scope)
 				} else {
-					return .init(type: .macro, description: "Unmatching types. Expected \"\(variable.type.rawValue)\", got \"\(typeOfNewValue.rawValue)\".", line: line, word: 0)
+					return .init(type: .panic, description: "Unmatching types. Expected \"\(variable.type.rawValue)\", got \"\(typeOfNewValue.rawValue)\".", line: line, word: 0)
 				}
 				
 				return nil
 			}
 			
-			GBMacro("PRINT") { arguments, line, _ in
+			GBMacro("print") { arguments, line, _ in
 				if arguments.count == 1 {
 					if case .string(let text) = arguments[0] {
 						self.console.text(text)
@@ -471,16 +483,16 @@ extension GBCore {
 					} else if case .number(let number) = arguments[0] {
 						self.console.text(String(number))
 					} else {
-						return .init(type: .macro, description: "Invalid type. Expected STRING, BOOL or NUMBER.", line: line, word: 0)
+						return .init(type: .panic, description: "Invalid type. Expected STRING, BOOL or NUMBER.", line: line, word: 0)
 					}
 				} else {
-					return .init(type: .macro, description: "Too many arguments for PRINT macro.", line: line, word: 0)
+					return .init(type: .panic, description: "Too many arguments for print macro.", line: line, word: 0)
 				}
 				
 				return nil
 			}
 			
-			GBMacro("PRINTLN") { arguments, line, _ in
+			GBMacro("println") { arguments, line, _ in
 				if arguments.count == 1 {
 					if case .string(let text) = arguments[0] {
 						self.console.text(text + "\n")
@@ -489,24 +501,24 @@ extension GBCore {
 					} else if case .number(let number) = arguments[0] {
 						self.console.text(String(number) + "\n")
 					} else {
-						return .init(type: .macro, description: "Invalid type. Expected STRING, BOOL or NUMBER.", line: line, word: 0)
+						return .init(type: .panic, description: "Invalid type. Expected STRING, BOOL or NUMBER.", line: line, word: 0)
 					}
 				} else {
-					return .init(type: .macro, description: "Too many arguments for PRINTLN macro.", line: line, word: 0)
+					return .init(type: .panic, description: "Too many arguments for println macro.", line: line, word: 0)
 				}
 				
 				return nil
 			}
 			
-			GBMacro("INPUT") { arguments, line, _ in
+			GBMacro("input") { arguments, line, _ in
 				if arguments.count == 2 || arguments.count == 3 {
 					var type: GBStorage.ValueType = .null
 
-					var ignoreInputType = false
+					var ignoreinputType = false
 					
 					if arguments.count == 3 {
 						if case .bool(let _) = arguments[2] {
-							ignoreInputType = true
+							ignoreinputType = true
 						}
 					}
 					
@@ -514,26 +526,26 @@ extension GBCore {
 						if let convertedType = GBStorage.ValueType(rawValue: value.uppercased()) {
 							type = convertedType
 						} else {
-							return .init(type: .macro, description: "Invalid type. Expected a type, for example: NUMBER, STRING or BOOL.", line: line, word: 0)
+							return .init(type: .panic, description: "Invalid type. Expected a type, for example: NUMBER, STRING or BOOL.", line: line, word: 0)
 						}
 					} else {
-						return .init(type: .macro, description: "Invalid type. Expected a type, for example: NUMBER, STRING or BOOL.", line: line, word: 0)
+						return .init(type: .panic, description: "Invalid type. Expected a type, for example: NUMBER, STRING or BOOL.", line: line, word: 0)
 					}
 					
 					if case .pointer(let key) = arguments[1] {
 						if !self.storage.variableExists(key) {
-							return .init(type: .macro, description: "No variable for pointer exists.", line: line, word: 0)
+							return .init(type: .panic, description: "No variable for pointer exists.", line: line, word: 0)
 						}
 
 						let variable = self.storage[key]
 						
 						if variable.type != type {
-							return .init(type: .macro, description: "Explicit type and variable type don't match.", line: line, word: 0)
+							return .init(type: .panic, description: "Explicit type and variable type don't match.", line: line, word: 0)
 						}
 
 						var input = self.console.input()
 
-						if (input.detectType() == variable.type) || ignoreInputType {
+						if (input.detectType() == variable.type) || ignoreinputType {
 							if input.detectType() == .number {
 								if !input.contains(".") {
 									input.append(".0")
@@ -543,14 +555,14 @@ extension GBCore {
 							self.storage[key] = .init(value: input, type: variable.type, scope: storage[key].scope)
 							return nil
 						} else {
-							return .init(type: .macro, description: "Provided input doesn't match the type of variable \"\(key)\". Expected \"\(variable.type.rawValue)\", got \"\(input.detectType().rawValue)\".", line: line, word: 0)
+							return .init(type: .panic, description: "Provided input doesn't match the type of variable \"\(key)\". Expected \"\(variable.type.rawValue)\", got \"\(input.detectType().rawValue)\".", line: line, word: 0)
 						}
 					} else {
-						return .init(type: .macro, description: "Invalid type. Expected a pointer.", line: line, word: 0)
+						return .init(type: .panic, description: "Invalid type. Expected a pointer.", line: line, word: 0)
 					}
 				}
 				
-				return .init(type: .macro, description: "Too many or too little arguments for INPUT macro.", line: line, word: 0)
+				return .init(type: .panic, description: "Too many or too little arguments for input macro.", line: line, word: 0)
 			}
 		}
 	}

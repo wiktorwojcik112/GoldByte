@@ -1,41 +1,41 @@
-STRUCT Vector
-	VAR STRING name "undefined"
+struct Vector {
+	var STRING name "undefined"
 
-	FN init(name:STRING):VOID
-		SET $self::name name
-	/FN
+	func init(name:STRING):VOID {
+		set $self::name name
+	}
 
 
-	FN insert(value:ANY,index:NUMBER):VOID
-		IF # -1 < index #
-			ERROR "Index out of range."
-		/IF
+	func insert(value:ANY,index:NUMBER):VOID {
+		if # -1 < index # {
+			throw "Index out of range."
+		}
 		
-		ENABLE "DYN_VAR_MAKE"
-		ENABLE "DYN_VAR_READ"
+		enable "dyn_var_make"
+		enable "dyn_var_read"
 
-		VAR STRING arrayCell "%(self::name) %(index)"
-		DYN_VAR_MAKE STRING arrayCell value
+		var STRING arrayCell "%(self::name) %(index)"
+		dyn_var_make STRING arrayCell value
 		
-		DISABLE "DYN_VAR_MAKE"
-		DISABLE "DYN_VAR_READ"
-	/FN
+		disable "dyn_var_make"
+		disable "dyn_var_read"
+	}
 	
-	FN read(index:NUMBER):STRING
-		IF # -1 < index #
-			ERROR "Index out of range."
-		/IF
+	func read(index:NUMBER):STRING {
+		if # -1 < index # {
+			throw "Index out of range."
+		}
 		
-		ENABLE "DYN_VAR_MAKE"
-		ENABLE "DYN_VAR_READ"
+		enable "dyn_var_make"
+		enable "dyn_var_read"
 		
-		VAR STRING arrayCell "%(self::name) %(index)"
-		VAR STRING result ""
-		DYN_VAR_READ STRING arrayCell $result
+		var STRING arrayCell "%(self::name) %(index)"
+		var STRING result ""
+		dyn_var_read STRING arrayCell $result
 		
-		DISABLE "DYN_VAR_MAKE"
-		DISABLE "DYN_VAR_READ"
+		disable "dyn_var_make"
+		disable "dyn_var_read"
 		
-		RETURN result
-	/FN
-/STRUCT
+		return result
+	}
+}

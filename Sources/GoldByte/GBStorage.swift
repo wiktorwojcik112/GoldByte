@@ -54,7 +54,7 @@ class GBStorage {
 	
 	var functions: [String: GBFunction] = [:]
 	
-	var disabledMacros: Set<String> = ["DYN_VAR_MAKE", "DYN_VAR_READ"]
+	var disabledMacros: Set<String> = ["dyn_var_make", "dyn_var_read"]
 	
 	func generateVariables(forFunction functionName: String, withArguments arguments: [GBFunctionArgument], withScope scope: Scope) {
 		var namespaces = functionName.components(separatedBy: "::")
@@ -102,20 +102,20 @@ class GBStorage {
 		
 		if let function = functions[name] {
 			if arguments.count != function.definition.arguments.count {
-				return (nil, nil, .init(type: .interpreting, description: "Expected \(function.definition.arguments.count) arguments, got \(arguments.count).", line: line, word: 0))
+				return (nil, nil, .init(type: .panic, description: "Expected \(function.definition.arguments.count) arguments, got \(arguments.count).", line: line, word: 0))
 			}
 			
 			for (n, functionDefinedArgument) in function.definition.arguments.enumerated() {
 				if functionDefinedArgument.type.rawValue != arguments[n].type.rawValue {
 					if functionDefinedArgument.type != .any {
-						return (nil, nil, .init(type: .interpreting, description: "Invalid type for argument for function \"\(name)\". Expected \(functionDefinedArgument.type), got \(arguments[n].type).", line: line, word: 0))
+						return (nil, nil, .init(type: .panic, description: "Invalid type for argument for function \"\(name)\". Expected \(functionDefinedArgument.type), got \(arguments[n].type).", line: line, word: 0))
 					}
 				}
 			}
 			
 			return (function.codeBlock, function.definition.returnType == .void ? nil : function.definition.returnType, nil)
 		} else {
-			return (nil, nil, .init(type: .interpreting, description: "No function found named \"\(name)\".", line: line, word: 0))
+			return (nil, nil, .init(type: .panic, description: "No function found named \"\(name)\".", line: line, word: 0))
 		}
 	}
 	
@@ -133,10 +133,10 @@ class GBStorage {
 					if !variable.isConstant {
 						variables[key] = newValue
 					} else {
-						errorHandler.handle(.init(type: .type, description: "\"\(key)\" is a constant. New value will be ignored, but undefined actions may take place."))
+						errorHandler.handle(.init(type: .panic, description: "\"\(key)\" is a constant. New value will be ignored, but undefined actions may take place."))
 					}
 				} else {
-					errorHandler.handle(.init(type: .type, description: "Expected \"\(variable.type)\", got \"\(newValue.type)\"."))
+					errorHandler.handle(.init(type: .panic, description: "Expected \"\(variable.type)\", got \"\(newValue.type)\"."))
 				}
 			} else {
 				variables[key] = newValue
@@ -164,10 +164,10 @@ class GBStorage {
 			if !disabledMacros.contains(key) {
 				return action(arguments, line, namespace)
 			} else {
-				return .init(type: .type, description: "Macro [\(key)] is disabled.", line: line, word: 0)
+				return .init(type: .panic, description: "Macro [\(key)] is disabled.", line: line, word: 0)
 			}
 		} else {
-			return .init(type: .type, description: "Unknown macro: [\(key)]", line: line, word: 0)
+			return .init(type: .panic, description: "Unknown macro: [\(key)]", line: line, word: 0)
 		}
 	}
 }

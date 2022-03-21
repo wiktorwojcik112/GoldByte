@@ -13,13 +13,8 @@ protocol GBErrorHandler {
 
 public struct GBError {
 	public enum ErrorType: String {
-		case parsing = "parsing"
-		case interpreting = "interpreting"
-		case type = "type"
-		case macro = "macro"
-		case equation = "equation"
-		case logical = "logical"
-		case planned = "planned"
+		case panic = "panic"
+		case thrown = "thrown"
 	}
 	
 	var type: ErrorType
@@ -32,8 +27,8 @@ public struct GBError {
 		self.type = type
 		self.description = description
 		
-		line = 0
-		word = 0
+		line = 1
+		word = 1
 	}
 	
 	init(type: ErrorType, description: String, line: Int, word: Int) {

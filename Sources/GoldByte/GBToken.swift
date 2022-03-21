@@ -58,12 +58,12 @@ enum GBToken {
 					if storage.variableExists(pointer) {
 						castedValue = storage[pointer].value
 					} else {
-						return (nil, .init(type: .interpreting, description: "Variable \"\(pointer)\" doesn't exist."))
+						return (nil, .init(type: .panic, description: "Variable \"\(pointer)\" doesn't exist."))
 					}
 				case .url(let url):
 					castedValue = url.path
 				case .array(_):
-					return (nil, .init(type: .interpreting, description: "Unable to cast array."))
+					return (nil, .init(type: .panic, description: "Unable to cast array."))
 			}
 			
 			switch type {
@@ -73,25 +73,25 @@ enum GBToken {
 					if let casted = Float(castedValue) {
 						return (.number(casted), nil)
 					} else {
-						return (nil, .init(type: .interpreting, description: "Can't cast value \"\(castedValue)\" to \(type.rawValue)."))
+						return (nil, .init(type: .panic, description: "Can't cast value \"\(castedValue)\" to \(type.rawValue)."))
 					}
 				case .bool:
 					if let casted = Bool(castedValue) {
 						return (.bool(casted), nil)
 					} else {
-						return (nil, .init(type: .interpreting, description: "Can't cast value \"\(castedValue)\" to \(type.rawValue)."))
+						return (nil, .init(type: .panic, description: "Can't cast value \"\(castedValue)\" to \(type.rawValue)."))
 					}
 				case .url:
 					if let casted = URL(string: castedValue) {
 						return (.url(casted), nil)
 					} else {
-						return (nil, .init(type: .interpreting, description: "Can't cast value \"\(castedValue)\" to \(type.rawValue)."))
+						return (nil, .init(type: .panic, description: "Can't cast value \"\(castedValue)\" to \(type.rawValue)."))
 					}
 				default:
-					return (nil, .init(type: .interpreting, description: "Can't cast to chosen type."))
+					return (nil, .init(type: .panic, description: "Can't cast to chosen type."))
 			}
 		}
 			
-		return (nil, .init(type: .interpreting, description: "Use cast only on cast token."))
+		return (nil, .init(type: .panic, description: "Use cast only on cast token."))
 	}
 }

@@ -1,54 +1,54 @@
-NAMESPACE Math
-	CONST NUMBER PI 3.14159265359
+namespace Math {
+	var NUMBER PI 3.14159265359
 	
-	FN sqrt(number:NUMBER):NUMBER
-		VAR NUMBER i 1
+	func sqrt(number:NUMBER):NUMBER {
+		var NUMBER i 1
 
-		WHILE # i != number #
-			VAR NUMBER multiplied <i * i>
+		while # i != number # {
+			var NUMBER multiplied |i * i|
 			
-			IF # multiplied == number #
-				RETURN i
-			/IF
+			if # multiplied == number # {
+				return i
+			}
 
-			SET $i <i + 1>
-		/WHILE
+			set $i |i + 1|
+		}
 
-		RETURN 0
-	/FN
+		return 0
+	}
 
-	FN power(number:NUMBER,power:NUMBER):NUMBER
-		IF # power == 0 #
-			RETURN 1
-		/IF
+	func power(number:NUMBER,power:NUMBER):NUMBER {
+		if # power == 0 # {
+			return 1
+		}
 
-		IF # power == 1 #
-			RETURN number
-		/IF
+		if # power == 1 # {
+			return number
+		}
 
-		VAR NUMBER result 0
-		SET $result number
+		var NUMBER result 0
+		set $result number
 
-		VAR NUMBER i 1
+		var NUMBER i 1
 
-		WHILE # i != power #
-			SET $result <result * number>
-			SET $i <i + 1>
-		/WHILE
+		while # i != power # {
+			set $result |result * number|
+			set $i |i + 1|
+		}
 
-		RETURN result
-	/FN
+		return result
+	}
 	
-	FN random(min:NUMBER,max:NUMBER):NUMBER
-		VAR NUMBER __temporary__ 0
-		RAND $__temporary__ min max
-		RETURN __temporary__
-	/FN
+	func random(min:NUMBER,max:NUMBER):NUMBER {
+		var NUMBER __temporary__ 0
+		rand $__temporary__ min max
+		return __temporary__
+	}
 	
-	FN modulo(number:NUMBER,modulo:NUMBER):NUMBER
-		VAR NUMBER __temporary__ 0
-		MODULO $__temporary__ number modulo
-		RETURN __temporary__
-	/FN
-/NAMESPACE
+	func modulo(number:NUMBER,modulo:NUMBER):NUMBER {
+		var NUMBER __temporary__ 0
+		modulo $__temporary__ number modulo
+		return __temporary__
+	}
+}
 

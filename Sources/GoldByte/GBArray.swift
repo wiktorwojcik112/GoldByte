@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  GBArray.swift
 //  
 //
 //  Created by Wiktor Wójcik on 14/12/2021.
