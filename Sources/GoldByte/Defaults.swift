@@ -60,46 +60,6 @@ extension GBCore {
 				return nil
 			}
 			
-			GBMacro("modulo") { arguments, line, _ in
-				if arguments.count != 3 {
-					return .init(type: .panic, description: "Expected 3 arguments, got \(arguments.count).", line: line, word: 0)
-				}
-				
-				var variable = ""
-				var number = 0
-				var modulo = 0
-				
-				if case .pointer(let value) = arguments[0] {
-					if storage.variableExists(value) {
-						if storage[value].type == .number {
-							variable = value
-						} else {
-							return .init(type: .panic, description: "Variable \"\(value)\" should be of type NUMBER.", line: line, word: 0)
-						}
-					} else {
-						return .init(type: .panic, description: "Variable \"\(value)\" doesn't exist.", line: line, word: 0)
-					}
-				} else {
-					return .init(type: .panic, description: "Invalid argument type. Expected pointer, got \"\(arguments[0].type)\"", line: line, word: 0)
-				}
-				
-				if case .number(let value) = arguments[1] {
-					number = Int(value)
-				} else {
-					return .init(type: .panic, description: "Invalid argument type. Expected NUMBER, got \"\(arguments[1].type)\"", line: line, word: 0)
-				}
-				
-				if case .number(let value) = arguments[2] {
-					modulo = Int(value)
-				} else {
-					return .init(type: .panic, description: "Invalid argument type. Expected NUMBER, got \"\(arguments[2].type)\"", line: line, word: 0)
-				}
-				
-				storage[variable] = .init(value: String(Float(number % modulo)), type: .number, scope: storage[variable].scope)
-								 
-				return nil
-			}
-			
 			GBMacro("dyn_var_make") { arguments, line, _ in
 				if arguments.count != 3 {
 					return .init(type: .panic, description: "Expected 3 arguments, got \(arguments.count).", line: line, word: 0)
@@ -308,7 +268,7 @@ extension GBCore {
 						var namespaces = variable.components(separatedBy: "::")
 						namespaces = namespaces.map { "[\($0)]" }
 						
-						var objectName = namespaces.joined(separator: "")
+						let objectName = namespaces.joined(separator: "")
 						
 						var variablesCount = 0
 						
@@ -340,52 +300,6 @@ extension GBCore {
 				return nil
 			}
 			
-			GBMacro("rand") { arguments, line, _ in
-				if arguments.count == 3 {
-					var variable = ""
-					var min: Float = 0
-					var max: Float = 0
-					
-					if case .pointer(let value) = arguments[0] {
-						if storage.variableExists(value) {
-							if storage[value].type == .number {
-								variable = value
-							} else {
-								return .init(type: .panic, description: "Variable \"\(value)\" should be of type NUMBER.", line: line, word: 0)
-							}
-						} else {
-							return .init(type: .panic, description: "Variable \"\(value)\" doesn't exist.", line: line, word: 0)
-						}
-					} else {
-						return .init(type: .panic, description: "Invalid argument type. Expected pointer, got \"\(arguments[0].type)\"", line: line, word: 0)
-					}
-					
-					if case .number(let value) = arguments[1] {
-						min = value
-					} else {
-						return .init(type: .panic, description: "Invalid argument type. Expected NUMBER, got \"\(arguments[1].type)\"", line: line, word: 0)
-					}
-					
-					if case .number(let value) = arguments[2] {
-						max = value
-					} else {
-						return .init(type: .panic, description: "Invalid argument type. Expected NUMBER, got \"\(arguments[2].type)\"", line: line, word: 0)
-					}
-					
-					if min > max {
-						return .init(type: .panic, description: "Min number must be lower than max number.", line: line, word: 0)
-					}
-					
-					let randomNumber = Int.random(in: Int(min)...Int(max))
-					
-					storage[variable] = .init(value: String(Float(randomNumber)), type: .number, scope: storage[variable].scope)
-				} else {
-					return .init(type: .panic, description: "Invalid number of arguments for RAND macro.", line: line, word: 0)
-				}
-				
-				return nil
-			}
-			
 			GBMacro("throw") { arguments, line, _ in
 				if arguments.count == 1 {
 					if case .string(let value) = arguments[0] {
@@ -394,7 +308,7 @@ extension GBCore {
 						return .init(type: .thrown, description: "Expected STRING, got \"\(arguments[0].type)\".", line: line, word: 0)
 					}
 				} else {
-					return .init(type: .panic, description: "Invalid number of arguments for ERROR macro.", line: line, word: 0)
+					return .init(type: .panic, description: "Invalid number of arguments for THROW macro.", line: line, word: 0)
 				}
 			}
 			
@@ -406,7 +320,7 @@ extension GBCore {
 						return .init(type: .panic, description: "Expected STRING, got \"\(arguments[0].type)\".", line: line, word: 0)
 					}
 				} else {
-					return .init(type: .panic, description: "Invalid number of arguments for ERROR macro.", line: line, word: 0)
+					return .init(type: .panic, description: "Invalid number of arguments for PANIC macro.", line: line, word: 0)
 				}
 			}
 			
@@ -473,98 +387,67 @@ extension GBCore {
 				
 				return nil
 			}
-			
-			GBMacro("print") { arguments, line, _ in
-				if arguments.count == 1 {
-					if case .string(let text) = arguments[0] {
-						self.console.text(text)
-					} else if case .bool(let bool) = arguments[0] {
-						self.console.text(String(bool))
-					} else if case .number(let number) = arguments[0] {
-						self.console.text(String(number))
-					} else {
-						return .init(type: .panic, description: "Invalid type. Expected STRING, BOOL or NUMBER.", line: line, word: 0)
-					}
-				} else {
-					return .init(type: .panic, description: "Too many arguments for print macro.", line: line, word: 0)
-				}
-				
-				return nil
-			}
-			
-			GBMacro("println") { arguments, line, _ in
-				if arguments.count == 1 {
-					if case .string(let text) = arguments[0] {
-						self.console.text(text + "\n")
-					} else if case .bool(let bool) = arguments[0] {
-						self.console.text(String(bool) + "\n")
-					} else if case .number(let number) = arguments[0] {
-						self.console.text(String(number) + "\n")
-					} else {
-						return .init(type: .panic, description: "Invalid type. Expected STRING, BOOL or NUMBER.", line: line, word: 0)
-					}
-				} else {
-					return .init(type: .panic, description: "Too many arguments for println macro.", line: line, word: 0)
-				}
-				
-				return nil
-			}
-			
-			GBMacro("input") { arguments, line, _ in
-				if arguments.count == 2 || arguments.count == 3 {
-					var type: GBStorage.ValueType = .null
-
-					var ignoreinputType = false
-					
-					if arguments.count == 3 {
-						if case .bool(let _) = arguments[2] {
-							ignoreinputType = true
-						}
-					}
-					
-					if case .string(let value) = arguments[0] {
-						if let convertedType = GBStorage.ValueType(rawValue: value.uppercased()) {
-							type = convertedType
-						} else {
-							return .init(type: .panic, description: "Invalid type. Expected a type, for example: NUMBER, STRING or BOOL.", line: line, word: 0)
-						}
-					} else {
-						return .init(type: .panic, description: "Invalid type. Expected a type, for example: NUMBER, STRING or BOOL.", line: line, word: 0)
-					}
-					
-					if case .pointer(let key) = arguments[1] {
-						if !self.storage.variableExists(key) {
-							return .init(type: .panic, description: "No variable for pointer exists.", line: line, word: 0)
-						}
-
-						let variable = self.storage[key]
-						
-						if variable.type != type {
-							return .init(type: .panic, description: "Explicit type and variable type don't match.", line: line, word: 0)
-						}
-
-						var input = self.console.input()
-
-						if (input.detectType() == variable.type) || ignoreinputType {
-							if input.detectType() == .number {
-								if !input.contains(".") {
-									input.append(".0")
-								}
-							}
-							
-							self.storage[key] = .init(value: input, type: variable.type, scope: storage[key].scope)
-							return nil
-						} else {
-							return .init(type: .panic, description: "Provided input doesn't match the type of variable \"\(key)\". Expected \"\(variable.type.rawValue)\", got \"\(input.detectType().rawValue)\".", line: line, word: 0)
-						}
-					} else {
-						return .init(type: .panic, description: "Invalid type. Expected a pointer.", line: line, word: 0)
-					}
-				}
-				
-				return .init(type: .panic, description: "Too many or too little arguments for input macro.", line: line, word: 0)
-			}
 		}
+	}
+}
+
+let printBuiltinFunction = GBBuiltinFunction { arguments, line in
+	if arguments.count != 1 {
+		return (nil, .init(type: .panic, description: "Print function expects only 1 argument.", line: line, word: 1))
+	}
+	
+	print(arguments[0].value, terminator: "")
+	
+	return (nil, nil)
+}
+
+let printlnBuiltinFunction = GBBuiltinFunction { arguments, line in
+	if arguments.count != 1 {
+		return (nil, .init(type: .panic, description: "Print function expects 1 argument.", line: line, word: 1))
+	}
+	
+	print(arguments[0].value)
+	
+	return (nil, nil)
+}
+
+let readBuiltinFunction = GBBuiltinFunction { arguments, line in
+	if arguments.count != 0 {
+		return (nil, .init(type: .panic, description: "Read function expects 0 argument.", line: line, word: 1))
+	}
+	
+	let output = readLine() ?? ""
+	
+	return (.string(output), nil)
+}
+
+let randBuiltinFunction = GBBuiltinFunction { arguments, line in
+	if arguments.count == 2 {
+		var min = 0
+		var max = 0
+
+		if arguments[0].type == .number {
+			min = Int(arguments[0].value)!
+		} else {
+			return (nil, .init(type: .panic, description: "Invalid argument type. Expected NUMBER, got \"\(arguments[1].type)\"", line: line, word: 0))
+		}
+		
+		if arguments[1].type == .number {
+			max = Int(arguments[1].value)!
+		} else {
+			return (nil, .init(type: .panic, description: "Invalid argument type. Expected NUMBER, got \"\(arguments[2].type)\"", line: line, word: 0))
+		}
+		
+		if min > max {
+			return (nil, .init(type: .thrown, description: "Min number must be lower than max number.", line: line, word: 0))
+		}
+	
+		let randomNumber = Int.random(in: Int(min)...Int(max))
+		
+		
+		return (.number(Float(randomNumber)), nil)
+	} else {
+		return (nil, .init(type: .panic, description: "Invalid number of arguments for rand builtin function.", line: line, word: 0))
 	}
 }
 

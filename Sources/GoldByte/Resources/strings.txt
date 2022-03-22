@@ -1,5 +1,5 @@
 namespace Strings {
 	func concat(left:ANY,right:ANY):STRING {
-		return "%(left|right)"
+		return "%(left) %(right)"
 	}
 }

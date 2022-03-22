@@ -44,11 +44,5 @@ namespace Math {
 		rand $__temporary__ min max
 		return __temporary__
 	}
-	
-	func modulo(number:NUMBER,modulo:NUMBER):NUMBER {
-		var NUMBER __temporary__ 0
-		modulo $__temporary__ number modulo
-		return __temporary__
-	}
 }
 

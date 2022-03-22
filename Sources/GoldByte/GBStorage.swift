@@ -12,8 +12,17 @@ class GBStorage {
 	typealias GBMacroAction = GBCore.GBMacroAction
 	
 	var errorHandler: GBErrorHandler
-	
 	var macros: [String: GBMacroAction]
+	
+	var functions = [String: GBFunction]()
+	var disabledMacros: Set<String> = ["dyn_var_make", "dyn_var_read"]
+	var variables = [String: GBVariable]()
+	var builtInFunctions = [
+		"@print": printBuiltinFunction,
+		"@println": printlnBuiltinFunction,
+		"@read": readBuiltinFunction,
+		"@rand": randBuiltinFunction,
+	]
 	
 	init(errorHandler: GBErrorHandler, @GBMacrosBuilder macrosBuilder: () -> [String: GBMacroAction]) {
 		self.errorHandler = errorHandler
@@ -42,8 +51,6 @@ class GBStorage {
 		case any = "ANY"
 	}
 	
-	var variables = [String: GBVariable]()
-	
 	func deleteScope(_ scope: Scope) {
 		for (key, variable) in variables {
 			if variable.scope == scope {
@@ -51,10 +58,6 @@ class GBStorage {
 			}
 		}
 	}
-	
-	var functions: [String: GBFunction] = [:]
-	
-	var disabledMacros: Set<String> = ["dyn_var_make", "dyn_var_read"]
 	
 	func generateVariables(forFunction functionName: String, withArguments arguments: [GBFunctionArgument], withScope scope: Scope) {
 		var namespaces = functionName.components(separatedBy: "::")
@@ -159,6 +162,20 @@ class GBStorage {
 		self[key].type != .null
 	}
 	
+	func handleBuiltinFunction(_ name: String, arguments: [GBFunctionArgument], line: Int) -> (GBValue?, GBError?) {
+		if let function = builtInFunctions[name] {
+			let (output, error) = function.code(arguments, line)
+			
+			if let error = error {
+				return (nil, error)
+			}
+			
+			return (output, nil)
+		} else {
+			return (nil, .init(type: .panic, description: "There is no builtin function with name \"\(name)\".", line: line, word: 1))
+		}
+	}
+	
 	func handleMacro(_ key: String, arguments: [GBValue], line: Int, namespace: String) -> GBError? {
 		if let action = macros[key] {
 			if !disabledMacros.contains(key) {
@@ -205,6 +222,10 @@ public struct GBMacrosBuilder {
 		
 		return builtMacros
 	}
+}
+
+struct GBBuiltinFunction {
+	var code: ([GBFunctionArgument], Int) -> (GBValue?, GBError?)
 }
 
 struct GBFunction {

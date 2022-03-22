@@ -32,11 +32,9 @@ gbtool ~/Desktop/file1.goldbyte
 
 # To-Do:
 
-[ ] Divide parsing words into different functions
+[x] Divide parsing words into different functions
 
 [ ] Divide interpreting tokens into different functions
-
-[ ] Replace many if's with switch
 
 [ ] Improve code readability (There is a lot of things to improve)
 
@@ -44,69 +42,17 @@ gbtool ~/Desktop/file1.goldbyte
 
 [x] Add support for relative paths as arguments
 
-[ ] Remove support for top-level code (remember, that use is a macro)
+[x] Remove support for top-level code (remember, that use is a macro)
 
 [ ] Improve errors
 
 [ ] Add documentation
 
-# Macros
-
-print <value> - Prints value to console. Must be variable, bool, string, plain text or number.
-
-input <type> <pointer> - Gets a value of specified type from keyboard. Type should be string, number or bool.
-
-ASSIGN <pointer> <value> - Assigns value to variable. Value should be STRING, BOOL, NUMBER, variable, logical expression or equation.
-
-# <logical expression> # - Returns logical operations result. You put it between # signs with 1 space.
-
-<<equation>> - Returns result of equation. You put them between < and > signs without space.
-
-EXIT - Exits program.
-
-RAND <pointer> <number> <number> - Will randomize integer in specified range and assign it to variable.
-
-throw <value> - Exits program with error message. Value should be STRING.
-
-if <logical expression>
- <code block>
-}
- 
- If statement. Will execute code on code block (between if and }) if logical expression returns true.
- 
-// - comment. It must be on a seperate line (i.e. Not a the end of line where there is code)
-
-+   -   *   /  - operations
-
-=  <   >    &&     ||    != - logical operators
-
-if # 5 == 6 #
-
-}
-
-Value Types:
-NUMBER - number                		234            5564            5.30            -40
-STING - string                      "Test"       "ffff"
-BOOL - boolean                      true         false         # 5 = 4 #
-POINTER - points to variable        $example
-
-func <function name>(<argument name>:<argument value type>,<argument name>:<argument value type>):<return type>
- <code block>
-}
-
-Function definition. Function name must be a plain text (i.e. these characters are prohibited: £§!@#$%^&*()+-={}[]|<>?;'\\,./~). Argument name must too be a plain text, and argument value type must be a value type (i.e. NUMBER, STRING (there is support for ANY value type, which makes every value a string, but it may be unexpected)). Return type must be a value type or VOID for no return value. You seperate arguments using , but with no spaces. You end code block using }.
-
-Example:
-
-func getFullName(name:STRING,surname:STRING):STRING
-	var STRING fullName ""
-	set $fullName Strings::concat(name,surname)
-	return fullName
-}
+[ ] Fix scope issues
 
 # Std library
 
-You can use it by using use "std". It uses "arrays", "math" and "strings" libraries.
+You can include it by using "use "std"". It uses "arrays", "math" and "strings" libraries.
 
 # Examples
 
@@ -114,13 +60,41 @@ You can use it by using use "std". It uses "arrays", "math" and "strings" librar
 
 use "std"
 
-func getFullName(name:STRING,surname:STRING):STRING
-	var STRING fullName ""
-	set $fullName Strings::concat(name,surname)
-	return fullName
+func getFullName(name:STRING,surname:STRING):STRING {
+	var STRING __fullName__ ""
+	set $__fullName__ Strings::concat(name,surname)
+	return __fullName__
 }
 
-func main():NUMBER
-	print getFullName("Wiktor","Wojcik")
+func main():NUMBER {
+	var STRING name ""
+	var STRING surname ""
+
+	@print("Enter your name: ")
+	set $name @read()
+
+	@print("Enter your surname: ")
+	set $surname @read()
+
+	var STRING fullName ""
+	set $fullName getFullName(name,surname)
+
+	@print(fullName)
 	return 0
 }
+
+> continueUntilFive.goldbyte
+
+use "std"
+
+func main():NUMBER {
+	var NUMBER randomNumber 0
+	
+	while # randomNumber != 5 # {
+		set $randomNumber @rand(0,10)
+		@println(randomNumber)
+	}
+
+	return 0
+}
+

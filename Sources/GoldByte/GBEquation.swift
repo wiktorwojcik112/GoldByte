@@ -45,14 +45,14 @@ struct GBEquation {
 			return (nil, error)
 		}
 		
-		var result: Float = -1
+		var result: Float? = nil
 		
-		var equation = withoutVariables!
+		let equation = withoutVariables!
 		
 		var lastOperator: GBOperator? = nil
 		
 		for symbol in equation {
-			if result == -1 {
+			if result == nil {
 				if case .number(let number) = symbol {
 					result = number
 				}
@@ -67,14 +67,20 @@ struct GBEquation {
 					
 				switch lastOperator! {
 					case .plus:
-						result += currentNumber
+						result! += currentNumber
 					case .minus:
-						result -= currentNumber
+						result! -= currentNumber
 					case .multiply:
-						result *= currentNumber
+						result! *= currentNumber
 					case .divide:
 						if currentNumber != 0 {
-							result /= currentNumber
+							result! /= currentNumber
+						} else {
+							return (nil, .init(type: .panic, description: "Can't divide by 0."))
+						}
+					case .modulo:
+						if currentNumber != 0 {
+							result = Float(Int(result!) % Int(currentNumber))
 						} else {
 							return (nil, .init(type: .panic, description: "Can't divide by 0."))
 						}
@@ -95,6 +101,7 @@ enum GBEquationSymbol: Equatable {
 	case minus
 	case divide
 	case multiply
+	case modulo
 	
 	func toOperator() -> GBOperator? {
 		switch self {
@@ -106,6 +113,8 @@ enum GBEquationSymbol: Equatable {
 				return .divide
 			case .multiply:
 				return .multiply
+			case .modulo:
+				return .modulo
 			default:
 				return nil
 		}
@@ -117,6 +126,7 @@ enum GBOperator {
 	case minus
 	case divide
 	case multiply
+	case modulo
 	
 	func toSymbol() -> GBEquationSymbol {
 		switch self {
@@ -128,6 +138,8 @@ enum GBOperator {
 				return .divide
 			case .multiply:
 				return .multiply
+			case .modulo:
+				return .modulo
 		}
 	}
 }

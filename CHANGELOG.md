@@ -23,3 +23,9 @@ Initial release
 - Replace code block tags with { and }
 - Replace "fn" keyword with "func"
 - Make equation block start and end with | instead of < and >
+
+1.1.0-beta2
+- Replace rand, print, println and read with builtin functions
+- Add builtin functions - their names start with @ and are defined inside GoldByte
+- Add modulo (% operator) to equations (currently, all numbers are floats, so modulo converts them to integers)
+- Remove modulo macro

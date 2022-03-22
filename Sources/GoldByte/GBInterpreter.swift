@@ -67,39 +67,47 @@ class GBInterpreter {
 						case .function_keyword:
 							task = .function_definition(nil, nil)
 						case .function_invocation(let invocation):
-							var arguments = [GBFunctionArgument]()
+							var functionArguments = [GBFunctionArgument]()
 							
 							for argument in invocation.arguments {
 								if argument.type == .variable {
 									if storage.variableExists(argument.value) {
 										let variable = storage[argument.value]
-										arguments.append(.init(value: variable.value, type: variable.type))
+										functionArguments.append(.init(value: variable.value, type: variable.type))
 									} else {
 										return (nil, 1, .init(type: .panic, description: "Variable \"\(argument.value)\" doesn't exist.", line: lineNumber, word: tokenNumber))
 									}
 								} else {
-									arguments.append(argument)
+									functionArguments.append(argument)
 								}
 							}
 
 							if line.count == 1 {
-								let (function, type, error) = storage.getFunction(invocation.name, arguments: arguments, line: lineNumber)
-								
-								if let error = error {
-									return (nil, 1, error)
+								if invocation.name.hasPrefix("@") {
+									let (_, error) = storage.handleBuiltinFunction(invocation.name, arguments: functionArguments, line: lineNumber)
+									
+									if let error = error {
+										return (nil, 1, error)
+									}
+								} else {
+									let (function, type, error) = storage.getFunction(invocation.name, arguments: functionArguments, line: lineNumber)
+									
+									if let error = error {
+										return (nil, 1, error)
+									}
+									
+									storage.generateVariables(forFunction: invocation.name, withArguments: functionArguments, withScope: scope)
+									
+									let scope = GBStorage.Scope(UUID())
+									
+									let (_, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type, namespace: invocation.name.components(separatedBy: "::").dropLast().joined(separator: "::") + "::", isFunction: true, lostLineNumbers: lineNumber)
+									
+									if let error = functionError {
+										return (nil, 1, error)
+									}
+									
+									storage.deleteScope(scope)
 								}
-								
-								let scope = GBStorage.Scope(UUID())
-								
-								storage.generateVariables(forFunction: invocation.name, withArguments: arguments, withScope: scope)
-								
-								let (_, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type, namespace: invocation.name.components(separatedBy: "::").dropLast().joined(separator: "::") + "::", isFunction: true, lostLineNumbers: lineNumber)
-								
-								if let error = functionError {
-									return (nil, 1, error)
-								}
-								
-								storage.deleteScope(scope)
 							} else {
 								return (nil, 1, .init(type: .panic, description: "Line, where function is 1st word, can't contain more instruction", line: lineNumber, word: tokenNumber))
 							}
@@ -202,56 +210,6 @@ class GBInterpreter {
 									}
 									
 									task = .variable_assignment(String(result!), type)
-								}
-							} else if case .function_invocation(let invocation) = token {
-								if case .variable_assignment( _, _) = task {
-									var arguments = [GBFunctionArgument]()
-									
-									for argument in invocation.arguments {
-										if argument.type == .variable {
-											if storage.variableExists(argument.value) {
-												let variable = storage[argument.value]
-												arguments.append(.init(value: variable.value, type: variable.type))
-											} else {
-												return (nil, 1, .init(type: .panic, description: "Variable \"\(argument.value)\" doesn't exist.", line: lineNumber, word: tokenNumber))
-											}
-										} else {
-											arguments.append(argument)
-										}
-									}
-									
-									let (function, type, error) = storage.getFunction(invocation.name, arguments: arguments, line: lineNumber)
-										
-									if let error = error {
-										return (nil, 1, error)
-									}
-										
-									let scope = GBStorage.Scope(UUID())
-										
-									storage.generateVariables(forFunction: invocation.name, withArguments: arguments, withScope: scope)
-										
-									let (result, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type, namespace: invocation.name.components(separatedBy: "::").dropLast().joined(separator: "::") + "::", isFunction: true, lostLineNumbers: lineNumber)
-										
-									if let error = functionError {
-										return (nil, 1, error)
-									}
-										
-									storage.deleteScope(scope)
-									
-									
-									if let error = error {
-										return (nil, 1, error)
-									}
-									
-									if case .number(let value) = result!, type == .number {
-										task = .variable_assignment(String(value), type)
-									} else if case .bool(let value) = result!, type == .bool {
-										task = .variable_assignment(String(value), type)
-									} else if case .string(let value) = result!, type == .string {
-										task = .variable_assignment(String(value), type)
-									} else {
-										return (nil, 1, .init(type: .panic, description: "Functions return value is not the same as variable type.", line: lineNumber, word: tokenNumber))
-									}
 								}
 							} else if case .number(let value) = token {
 								if case .variable_assignment( _, let type) = task {
@@ -374,60 +332,6 @@ class GBInterpreter {
 									}
 									
 									task = .constant_assignment(String(result!), type)
-								}
-							} else if case .function_invocation(let invocation) = token {
-								if case .variable_assignment( _, let type) = task {
-									if type != .number {
-										return (nil, 1, .init(type: .panic, description: "Expected \"\(type!.rawValue)\", got \"number\"", line: lineNumber, word: tokenNumber))
-									}
-									
-									var arguments = [GBFunctionArgument]()
-									
-									for argument in invocation.arguments {
-										if argument.type == .variable {
-											if storage.variableExists(argument.value) {
-												let variable = storage[argument.value]
-												arguments.append(.init(value: variable.value, type: variable.type))
-											} else {
-												return (nil, 1, .init(type: .panic, description: "Variable \"\(argument.value)\" doesn't exist.", line: lineNumber, word: tokenNumber))
-											}
-										} else {
-											arguments.append(argument)
-										}
-									}
-									
-									let (function, type, error) = storage.getFunction(invocation.name, arguments: arguments, line: lineNumber)
-									
-									if let error = error {
-										return (nil, 1, error)
-									}
-									
-									let scope = GBStorage.Scope(UUID())
-									
-									storage.generateVariables(forFunction: invocation.name, withArguments: arguments, withScope: scope)
-									
-									let (result, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type, namespace: invocation.name.components(separatedBy: "::").dropLast().joined(separator: "::") + "::", isFunction: true, lostLineNumbers: lineNumber)
-									
-									if let error = functionError {
-										return (nil, 1, error)
-									}
-									
-									storage.deleteScope(scope)
-									
-									
-									if let error = error {
-										return (nil, 1, error)
-									}
-									
-									if case .number(let value) = result!, type == .number {
-										task = .variable_assignment(String(value), type)
-									} else if case .bool(let value) = result!, type == .bool {
-										task = .variable_assignment(String(value), type)
-									} else if case .string(let value) = result!, type == .string {
-										task = .variable_assignment(String(value), type)
-									} else {
-										return (nil, 1, .init(type: .panic, description: "Functions return value is not the same as variable type.", line: lineNumber, word: tokenNumber))
-									}
 								}
 							} else if case .number(let value) = token {
 								if case .constant_assignment( _, let type) = task {
@@ -650,29 +554,43 @@ class GBInterpreter {
 								}
 							}
 							
-							let (function, type, error) = storage.getFunction(invocation.name, arguments: functionArguments, line: lineNumber)
-							
-							if let error = error {
-								return (nil, 1, error)
-							}
-							
-							storage.generateVariables(forFunction: invocation.name, withArguments: functionArguments, withScope: scope)
-							
-							let scope = GBStorage.Scope(UUID())
-
-							let (returnValue, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type, namespace: invocation.name.components(separatedBy: "::").dropLast().joined(separator: "::") + "::", isFunction: true, lostLineNumbers: lineNumber)
-							
-							if let error = functionError {
-								return (nil, 1, error)
-							}
-							
-							if let returnValue = returnValue {
-								arguments.append(returnValue)
+							if invocation.name.hasPrefix("@") {
+								let (output, error) = storage.handleBuiltinFunction(invocation.name, arguments: invocation.arguments, line: lineNumber)
+								
+								if let error = error {
+									return (nil, 1, error)
+								}
+								
+								if let output = output {
+									arguments.append(output)
+								} else {
+									return (nil, 1, .init(type: .panic, description: "Functions used as arguments must return value.", line: lineNumber, word: tokenNumber))
+								}
 							} else {
-								return (nil, 1, .init(type: .panic, description: "Functions used as arguments must return value.", line: lineNumber, word: tokenNumber))
+								let (function, type, error) = storage.getFunction(invocation.name, arguments: functionArguments, line: lineNumber)
+								
+								if let error = error {
+									return (nil, 1, error)
+								}
+								
+								storage.generateVariables(forFunction: invocation.name, withArguments: functionArguments, withScope: scope)
+								
+								let scope = GBStorage.Scope(UUID())
+								
+								let (returnValue, _, functionError) = interpret(function!, scope: scope, isInsideCodeBlock: true, returnType: type, namespace: invocation.name.components(separatedBy: "::").dropLast().joined(separator: "::") + "::", isFunction: true, lostLineNumbers: lineNumber)
+								
+								if let error = functionError {
+									return (nil, 1, error)
+								}
+								
+								if let returnValue = returnValue {
+									arguments.append(returnValue)
+								} else {
+									return (nil, 1, .init(type: .panic, description: "Functions used as arguments must return value.", line: lineNumber, word: tokenNumber))
+								}
+								
+								storage.deleteScope(scope)
 							}
-							
-							storage.deleteScope(scope)
 						} else if case .plain_text(let key) = token {
 							var namespaces = key.components(separatedBy: "::")
 							var key = namespaces.removeLast()

@@ -99,12 +99,17 @@ public class GBCore {
 			return error
 		}
 		
-		if configuration.debugMode {
-			print(DebugTools.formatParsingResult(parsingResult.parsed!))
-		}
-		
 		let (_, _, error) = interpreter.interpret(parsingResult.parsed!)
-		return error
+		
+		if let error = error {
+			var error = error
+			
+			error.description = "[\(filePath)] \(error.description)"
+			
+			return error
+		} else {
+			return nil
+		}
 	}
 	
 	public func debug(code: String, filePath: String) {
@@ -121,10 +126,6 @@ public class GBCore {
 			errorHandler.handle(error)
 			console.text("Program exited with exit code: 1\n")
 			return
-		}
-		
-		if configuration.debugMode {
-			print(DebugTools.formatParsingResult(parsingResult.parsed!))
 		}
 		
 		let (_, _, initialError) = interpreter.interpret(parsingResult.parsed!)
@@ -234,8 +235,6 @@ public class GBCore {
 				} else {
 					return .init(type: .panic, description: "Expected 1 argument, but got \(arguments.count) arguments.", line: line, word: 0)
 				}
-				
-				return nil
 			}
 		}
 	}

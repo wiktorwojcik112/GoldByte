@@ -2,10 +2,3 @@ use "strings"
 use "arrays"
 use "math"
 use "vectors"
-
-func input(text:STRING):STRING {
-	var STRING __temporary__ ""
-	print text
-	input STRING $__temporary__ true
-	return __temporary__
-}
